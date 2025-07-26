@@ -1,0 +1,73 @@
+name: blank_project
+description: "A new Flutter project."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+# Localization
+  flutter_localizations:
+    sdk: flutter
+# Code generator.
+  build_runner:
+# Connectivity
+  connectivity_plus: ^5.0.2
+# Splashing
+  flutter_native_splash:
+# State management.
+  flutter_bloc:
+# Code generation for immutable classes (cubit & retrofit).
+  freezed:
+  freezed_annotation:
+# Dependency injection.
+  get_it:
+# Classes and helper functions that support JSON code generation.
+  json_annotation:
+  json_serializable:
+# Networking
+  dio:
+  retrofit:
+  retrofit_generator:
+  pretty_dio_logger:
+# UI
+  flutter_screenutil:
+  cached_network_image:
+  flutter_svg:
+  lottie:
+# Data Storage
+  shared_preferences: ^2.2.2
+
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^2.0.0
+
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/svgs/
+    - assets/icons/
+    - assets/images/
+    - assets/lotties/
+    - assets/translations/
+
+  # fonts:
+  #   - family: ProximaSoft
+  #     fonts:
+  #       - asset: assets/fonts/ProximaSoft-Bold.ttf
+  #       - asset: assets/fonts/ProximaSoft-semiBold.ttf
+  #       - asset: assets/fonts/ProximaSoft-Medium.ttf
+  #       - asset: assets/fonts/ProximaSoft-Regular.ttf
