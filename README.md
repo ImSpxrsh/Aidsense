@@ -1,69 +1,69 @@
-🔥 Aidsense: The Big Idea
-Aidsense is a mobile app (built with Flutter) that uses AI to help low-income people in NJ‑09 (like Paterson) find local help — food, housing, clinics, etc.
+🆘 Aidsense
+AI-powered crisis support app for low-income communities in NJ-09
 
-People in crisis type stuff like:
+Aidsense is a cross-platform mobile app built with Flutter that helps individuals in crisis find real, local services like food banks, shelters, and free clinics — using plain language input and AI understanding.
+
+🌟 The Big Idea
+People in crisis don’t have time for complicated forms. They just want to say:
 
 “I’m hungry and have no money”
+
 “My landlord kicked me out”
+
 “I need a free doctor for my kid”
 
-And your app understands what they mean → then shows them nearby resources that can help.
+Aidsense understands these natural-language inputs using AI (ChatGPT API) and shows them nearby resources — instantly.
 
 🧠 What Makes Aidsense Special
-✅ AI-powered: It understands messy input using ChatGPT (online)
+✅ AI-powered — Understands messy text input via ChatGPT (OpenAI API)
+✅ Real help — Pulls real services from a local database
+✅ Offline mode — Works with limited functionality even without Wi-Fi
+✅ Cross-platform — Built in Flutter, runs on both Android and iOS
 
-✅ Real help: It finds real, local services from a database
+📱 How the App Works
+🔹 1. Open the App
+User taps Get Help from the home screen.
 
-✅ Offline mode: Still works (simpler version) when there’s no Wi-Fi
+🔹 2. User Types a Message
+Free-form text like:
 
-✅ Built in Flutter: Runs on both iPhone and Android
-
-📱 HOW THE APP WORKS (Step-by-Step)
-🔹 1. User Opens App
-They tap "Get Help"
-
-🔹 2. They Type a Message
+css
+Copy
+Edit
 “I need food for my baby”
 “I lost my job and can’t pay rent”
-
 🔹 3. AI Understands the Message
-If they’re online:
-The app sends that message to your Flask backend
+Online:
 
-Flask sends it to ChatGPT (OpenAI API)
+Flutter app sends message to Flask backend
 
-GPT replies with something like: "food" or "rent"
+Flask uses OpenAI API (ChatGPT) to interpret intent → e.g., "food" or "shelter"
 
-App uses that label to pull matching services from your database
+App queries database for matching services
 
-If they’re offline:
-Flutter uses a keyword matching function to guess the category
-(no ChatGPT, but still works!)
+Offline:
 
-Example: “I’m hungry” → matches "food"
+Uses keyword matching fallback (on-device)
 
-🔹 4. App Shows Help Nearby
-From your database (stored as JSON or SQLite), it shows:
+Example: “I’m hungry” → matches category "food"
 
-🥫 Food pantries
+🔹 4. Show Nearby Help
+Resources are shown from your local DB (JSON or SQLite):
 
-🏠 Emergency shelters
+🥫 Food Pantries
 
-🏥 Free clinics
+🏠 Emergency Shelters
 
-→ either in a map view (if online) or a list view (if offline)
+🏥 Free Clinics
+
+Online: Map View with geolocation sorting
+
+Offline: List View sorted by stored zip codes
 
 🔹 5. Bonus Features (Optional)
-❤️ Save/bookmark services
+❤️ Bookmark/save useful services
 
-📍 Use location to sort services by distance
+📍 Use location to sort services by proximity
 
-🔄 Let users update the resource list when they’re back online
+🔄 Allow community edits when back online
 
-💻 TECH STACK (Full Setup)
-🔷 FRONTEND → Flutter (Dart)
-Screen    What it does
-Home    Welcome + Get Help button
-Input    User types message
-Results    Shows list/map of help (food, shelter)
-Offline Mode    Handles local results without internet
