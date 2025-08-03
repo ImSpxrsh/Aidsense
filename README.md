@@ -1,6 +1,3 @@
-Here’s a more polished, professional, and **brief** version of your README that’s suitable for presenting to judges or the public—especially for something like the **NJ-09 Congressional App Challenge**:
-
----
 
 # 🆘 Aidsense
 
