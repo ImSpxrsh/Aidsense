@@ -1,6 +1,6 @@
-import 'package:blank_project/modules/home/logic/internet_connection/internet_connection_cubit.dart';
-import 'package:blank_project/modules/home/logic/localization/localization_cubit.dart';
-import 'package:blank_project/modules/home/ui/screens/home_screen.dart';
+import 'package:aidsense/modules/home/logic/internet_connection/internet_connection_cubit.dart';
+import 'package:aidsense/modules/home/logic/localization/localization_cubit.dart';
+import 'package:aidsense/modules/home/ui/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
               designSize: const Size(375, 812),
               minTextAdapt: true,
               child: MaterialApp(
-                title: 'Localization Cubit',
+                title: 'AidSense',
                 debugShowCheckedModeBanner: false,
                 theme: themeState is LightTheme
                     ? ThemeData.light()

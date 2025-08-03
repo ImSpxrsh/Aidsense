@@ -1,0 +1,202 @@
+{
+  "places": [
+    {
+      "id": "nj09-food-bank-001",
+      "name": "Community Food Bank of New Jersey - Jersey City",
+      "description": "Free food pantry and emergency food assistance. No income requirements or documentation needed.",
+      "category": "food",
+      "contactInfo": {
+        "phone": "(201) 434-8300",
+        "website": "https://cfbnj.org"
+      },
+      "address": {
+        "street": "700 Rahway Ave",
+        "city": "Jersey City",
+        "state": "NJ",
+        "zipCode": "07306",
+        "latitude": 40.7298,
+        "longitude": -74.0504
+      },
+      "operatingHours": {
+        "weekdayHours": {
+          "Monday": "9:00 AM - 4:00 PM",
+          "Tuesday": "9:00 AM - 4:00 PM",
+          "Wednesday": "9:00 AM - 4:00 PM",
+          "Thursday": "9:00 AM - 4:00 PM",
+          "Friday": "9:00 AM - 4:00 PM"
+        },
+        "weekendHours": {
+          "Saturday": "9:00 AM - 2:00 PM",
+          "Sunday": "Closed"
+        }
+      },
+      "services": ["Free food", "Emergency food bags", "Fresh produce"],
+      "rating": 4.8,
+      "reviewCount": 156
+    },
+    {
+      "id": "nj09-shelter-001",
+      "name": "Eva's Village Emergency Shelter",
+      "description": "24/7 emergency shelter for individuals and families. No appointment needed for intake.",
+      "category": "shelter",
+      "contactInfo": {
+        "phone": "(973) 684-4880",
+        "website": "https://evasvillage.org"
+      },
+      "address": {
+        "street": "393 Main St",
+        "city": "Paterson",
+        "state": "NJ",
+        "zipCode": "07501",
+        "latitude": 40.9168,
+        "longitude": -74.1718
+      },
+      "operatingHours": {
+        "isOpen24Hours": true,
+        "specialNotes": "24/7 emergency intake available"
+      },
+      "services": ["Emergency housing", "Meals", "Case management", "Support services"],
+      "rating": 4.5,
+      "reviewCount": 89
+    },
+    {
+      "id": "nj09-clinic-001",
+      "name": "Hudson County Community Health Center",
+      "description": "Free and low-cost medical care. Sliding scale fees based on income. No insurance required.",
+      "category": "healthcare",
+      "contactInfo": {
+        "phone": "(201) 915-2000",
+        "website": "https://rwjbh.org"
+      },
+      "address": {
+        "street": "176 Palisade Ave",
+        "city": "Jersey City",
+        "state": "NJ",
+        "zipCode": "07306",
+        "latitude": 40.7459,
+        "longitude": -74.0420
+      },
+      "operatingHours": {
+        "weekdayHours": {
+          "Monday": "8:00 AM - 7:00 PM",
+          "Tuesday": "8:00 AM - 7:00 PM",
+          "Wednesday": "8:00 AM - 7:00 PM",
+          "Thursday": "8:00 AM - 7:00 PM",
+          "Friday": "8:00 AM - 5:00 PM"
+        },
+        "weekendHours": {
+          "Saturday": "9:00 AM - 1:00 PM",
+          "Sunday": "Closed"
+        }
+      },
+      "services": ["Primary care", "Dental", "Mental health", "Pharmacy"],
+      "rating": 4.2,
+      "reviewCount": 234
+    },
+    {
+      "id": "nj09-library-wifi-001",
+      "name": "Jersey City Free Public Library - Main Branch",
+      "description": "Free WiFi, computers, restrooms, and quiet space. No library card required for internet access.",
+      "category": "wifi",
+      "contactInfo": {
+        "phone": "(201) 547-4500",
+        "website": "https://jclibrary.org"
+      },
+      "address": {
+        "street": "472 Jersey Ave",
+        "city": "Jersey City",
+        "state": "NJ",
+        "zipCode": "07302",
+        "latitude": 40.7178,
+        "longitude": -74.0431
+      },
+      "operatingHours": {
+        "weekdayHours": {
+          "Monday": "10:00 AM - 8:00 PM",
+          "Tuesday": "10:00 AM - 8:00 PM",
+          "Wednesday": "10:00 AM - 8:00 PM",
+          "Thursday": "10:00 AM - 8:00 PM",
+          "Friday": "10:00 AM - 6:00 PM"
+        },
+        "weekendHours": {
+          "Saturday": "10:00 AM - 5:00 PM",
+          "Sunday": "1:00 PM - 5:00 PM"
+        }
+      },
+      "amenities": ["Free WiFi", "Computers", "Restrooms", "Phone charging", "Quiet space"],
+      "hasWifi": true,
+      "services": ["Internet access", "Computer use", "Printing", "Study space"],
+      "rating": 4.6,
+      "reviewCount": 189
+    },
+    {
+      "id": "nj09-clothing-001",
+      "name": "Salvation Army Family Store & Donation Center",
+      "description": "Free clothing for those in need. Voucher system available for emergency clothing assistance.",
+      "category": "clothing",
+      "contactInfo": {
+        "phone": "(201) 435-6668",
+        "website": "https://salvationarmy.org"
+      },
+      "address": {
+        "street": "234 Martin Luther King Dr",
+        "city": "Jersey City",
+        "state": "NJ",
+        "zipCode": "07305",
+        "latitude": 40.7067,
+        "longitude": -74.0647
+      },
+      "operatingHours": {
+        "weekdayHours": {
+          "Monday": "9:00 AM - 7:00 PM",
+          "Tuesday": "9:00 AM - 7:00 PM",
+          "Wednesday": "9:00 AM - 7:00 PM",
+          "Thursday": "9:00 AM - 7:00 PM",
+          "Friday": "9:00 AM - 7:00 PM"
+        },
+        "weekendHours": {
+          "Saturday": "9:00 AM - 6:00 PM",
+          "Sunday": "11:00 AM - 5:00 PM"
+        }
+      },
+      "services": ["Free clothing", "Emergency clothing vouchers", "Household items"],
+      "rating": 4.1,
+      "reviewCount": 78
+    },
+    {
+      "id": "nj09-community-center-001",
+      "name": "Jersey City Community Center",
+      "description": "Community center with showers, restrooms, free WiFi, and social services information.",
+      "category": "shower",
+      "contactInfo": {
+        "phone": "(201) 547-5262"
+      },
+      "address": {
+        "street": "725 Montgomery St",
+        "city": "Jersey City",
+        "state": "NJ",
+        "zipCode": "07306",
+        "latitude": 40.7336,
+        "longitude": -74.0531
+      },
+      "operatingHours": {
+        "weekdayHours": {
+          "Monday": "8:00 AM - 6:00 PM",
+          "Tuesday": "8:00 AM - 6:00 PM",
+          "Wednesday": "8:00 AM - 6:00 PM",
+          "Thursday": "8:00 AM - 6:00 PM",
+          "Friday": "8:00 AM - 6:00 PM"
+        },
+        "weekendHours": {
+          "Saturday": "9:00 AM - 4:00 PM",
+          "Sunday": "Closed"
+        }
+      },
+      "amenities": ["Showers", "Restrooms", "Free WiFi", "Lockers", "Social services"],
+      "hasWifi": true,
+      "services": ["Shower facilities", "Restrooms", "Social services referrals"],
+      "rating": 4.3,
+      "reviewCount": 92
+    }
+  ]
+}
