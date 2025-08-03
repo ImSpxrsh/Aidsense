@@ -114,7 +114,7 @@ body {
 
 .developers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1.5rem;
     margin-top: 2rem;
 }
@@ -141,14 +141,7 @@ body {
 .developer-name {
     font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
     color: white;
-}
-
-.developer-role {
-    font-size: 0.9rem;
-    opacity: 0.8;
-    color: #e0e0e0;
 }
 
 .cta-section {
@@ -244,7 +237,7 @@ body {
     .feature {
         padding: 1.5rem;
     }
-    
+
     .developers-section {
         padding: 2rem 1rem;
     }
@@ -254,7 +247,7 @@ body {
     }
     
     .developers-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 1rem;
     }
     
