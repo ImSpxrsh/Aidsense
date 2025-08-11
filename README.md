@@ -1,69 +1,80 @@
-🆘 Aidsense
-AI-powered crisis support app for low-income communities in NJ-09
+# AidSense
 
-Aidsense is a cross-platform mobile app built with Flutter that helps individuals in crisis find real, local services like food banks, shelters, and free clinics — using plain language input and AI understanding.
+A Flutter app for AI-powered healthcare assistance and local resource discovery.
 
-🌟 The Big Idea
-People in crisis don’t have time for complicated forms. They just want to say:
+## Features
 
-“I’m hungry and have no money”
+- 🔐 Firebase Authentication (Email/Password, Google Sign-In)
+- 💬 AI Chat Interface
+- 📍 Location-based Services
+- 🔔 Push Notifications
+- 📱 Modern, Accessible UI
+- 🌍 Multi-language Support
 
-“My landlord kicked me out”
+## Project Structure
 
-“I need a free doctor for my kid”
+```
+lib/
+├── main.dart                 # App entry point
+├── screens/                  # UI Screens
+│   ├── login_screen.dart
+│   └── home_screen.dart
+├── services/                 # Business Logic Services
+│   ├── auth_service.dart     # Firebase Authentication
+│   ├── firestore_service.dart # Firestore Database
+│   └── notification_service.dart # Push Notifications
+├── models/                   # Data Models
+│   ├── user_model.dart
+│   ├── place_model.dart
+│   ├── bookmark_model.dart
+│   └── ...
+└── widgets/                  # Reusable UI Components
+    ├── change_theme_switch.dart
+    ├── localization_button.dart
+    └── ...
+```
 
-Aidsense understands these natural-language inputs using AI (ChatGPT API) and shows them nearby resources — instantly.
+## Setup Instructions
 
-🧠 What Makes Aidsense Special
-✅ AI-powered — Understands messy text input via ChatGPT (OpenAI API)
-✅ Real help — Pulls real services from a local database
-✅ Offline mode — Works with limited functionality even without Wi-Fi
-✅ Cross-platform — Built in Flutter, runs on both Android and iOS
+1. **Install Dependencies**
+   ```bash
+   flutter pub get
+   ```
 
-📱 How the App Works
-🔹 1. Open the App
-User taps Get Help from the home screen.
+2. **Firebase Configuration**
+   - Add your `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) files
+   - Enable Authentication, Firestore, and Cloud Messaging in Firebase Console
 
-🔹 2. User Types a Message
-Free-form text like:
+3. **Run the App**
+   ```bash
+   flutter run
+   ```
 
-css
-Copy
-Edit
-“I need food for my baby”
-“I lost my job and can’t pay rent”
-🔹 3. AI Understands the Message
-Online:
+## Dependencies
 
-Flutter app sends message to Flask backend
+- **Firebase**: Core, Auth, Firestore, Storage, Messaging
+- **State Management**: flutter_bloc
+- **UI**: Material Design 3, flutter_screenutil
+- **Networking**: dio, retrofit
+- **Localization**: flutter_localizations
+- **Notifications**: flutter_local_notifications
 
-Flask uses OpenAI API (ChatGPT) to interpret intent → e.g., "food" or "shelter"
+## Development
 
-App queries database for matching services
+The app is structured with a clean architecture approach:
+- **Screens**: Handle UI and user interactions
+- **Services**: Manage business logic and external APIs
+- **Models**: Define data structures
+- **Widgets**: Reusable UI components
 
-Offline:
+## Contributing
 
-Uses keyword matching fallback (on-device)
+1. Follow the existing code structure
+2. Add proper error handling
+3. Include unit tests for new features
+4. Update documentation as needed
 
-Example: “I’m hungry” → matches category "food"
+## License
 
-🔹 4. Show Nearby Help
-Resources are shown from your local DB (JSON or SQLite):
-
-🥫 Food Pantries
-
-🏠 Emergency Shelters
-
-🏥 Free Clinics
-
-Online: Map View with geolocation sorting
-
-Offline: List View sorted by stored zip codes
-
-🔹 5. Bonus Features (Optional)
-❤️ Bookmark/save useful services
-
-📍 Use location to sort services by proximity
-
-🔄 Allow community edits when back online
+This project is licensed under the MIT License.
 

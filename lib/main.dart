@@ -1,9 +1,7 @@
-import 'package:aidsense/my_app.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-
-import 'core/di/dependency_injection.dart';
-import 'core/routing/app_router.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,8 +9,26 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp();
   
-  // Initialize dependency injection
-  setupGetIt();
-  
-  runApp(MyApp(appRouter: AppRouter()));
+  runApp(const AidSenseApp());
+}
+
+class AidSenseApp extends StatelessWidget {
+  const AidSenseApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'AidSense',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
+    );
+  }
 }

@@ -8,73 +8,94 @@ version: 1.0.0+1
 environment:
   sdk: '>=3.2.0 <4.0.0'
 
-
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-# Localization
+
+  # Localization
   flutter_localizations:
     sdk: flutter
-# Code generator.
+
+  # Code generator.
   build_runner:
-# Connectivity
+
+  # Connectivity
   connectivity_plus: ^5.0.2
-# Splashing
+
+  # Splashing
   flutter_native_splash:
-# State management.
+
+  # State management.
   flutter_bloc:
-# Code generation for immutable classes (cubit & retrofit).
+
+  # Code generation for immutable classes (cubit & retrofit).
   freezed:
   freezed_annotation:
-# Dependency injection.
+
+  # Dependency injection.
   get_it:
-# Classes and helper functions that support JSON code generation.
+
+  # Classes and helper functions that support JSON code generation.
   json_annotation:
   json_serializable:
-# Networking
+
+  # Networking
   dio:
   retrofit:
   retrofit_generator:
   pretty_dio_logger:
-# UI
+
+  # UI
   flutter_screenutil:
   cached_network_image:
   flutter_svg:
   lottie:
-# Data Storage
+
+  # Data Storage
   shared_preferences: ^2.2.2
-# Firebase
+
+  # Firebase
   firebase_core: ^2.24.2
   firebase_auth: ^4.15.3
   cloud_firestore: ^4.13.6
   firebase_storage: ^11.5.6
-# Location Services
+  firebase_messaging: ^14.7.10
+
+  # Notifications
+  flutter_local_notifications: ^16.3.0
+
+  # Location Services
   geolocator: ^10.1.0
   geocoding: ^3.0.0
-# Database
+
+  # Database
   sqflite: ^2.3.0
   path: ^1.8.3
-# Maps (OpenStreetMap/Leaflet alternative to Google Maps)
+
+  # Maps (OpenStreetMap/Leaflet alternative to Google Maps)
   flutter_map: ^6.1.0
-  latlong2: ^0.8.1
-# HTTP for API calls
+  latlong2: ^0.9.1
+
+  # HTTP for API calls
   http: ^1.1.0
-# Permissions
+
+  # Permissions
   permission_handler: ^11.1.0
-# URL Launcher
+
+  # URL Launcher
   url_launcher: ^6.2.1
-# Chat/AI Interface
+
+  # Chat/AI Interface
   dash_chat_2: ^0.0.18
 
-
+dependency_overrides:
+  intl: 0.20.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^2.0.0
-
 
 flutter:
   uses-material-design: true
@@ -86,11 +107,3 @@ flutter:
     - assets/lotties/
     - assets/translations/
     - assets/data/
-
-  # fonts:
-  #   - family: ProximaSoft
-  #     fonts:
-  #       - asset: assets/fonts/ProximaSoft-Bold.ttf
-  #       - asset: assets/fonts/ProximaSoft-semiBold.ttf
-  #       - asset: assets/fonts/ProximaSoft-Medium.ttf
-  #       - asset: assets/fonts/ProximaSoft-Regular.ttf
