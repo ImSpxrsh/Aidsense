@@ -1,13 +1,4 @@
-# AidSense Flutter App (Firebase Authentication)
 
-This project is a Flutter front-end scaffold integrated with Firebase Authentication for Android, iOS, and Web.
-
-## What is included
-- Flutter app with screens:
-  - Welcome -> Onboarding -> Login -> Signup -> Reset Password -> Home
-- Firebase initialization (lib/firebase_options.dart) using your provided configs
-- `android_google_services.json` and `ios_GoogleService-Info.plist` included at project root (please move them to platform folders as described)
-- Web firebase init snippet at web/firebase_init.js
 
 ## How to run
 
@@ -35,6 +26,3 @@ This project is a Flutter front-end scaffold integrated with Firebase Authentica
 ## Notes
 - Email/password sign up sends verification email (optional).
 - Password reset sends an email via Firebase Auth.
-- Replace the placeholder images in `assets/images/` with higher-res exports if needed.
-
-If you want, I can package this into a ZIP file now.
