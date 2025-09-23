@@ -1,0 +1,28 @@
+name: aidsense_app
+description: AidSense Flutter app with Firebase Authentication (android, ios, web)
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.18.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/welcome.png
+    - assets/images/onboarding_strip.png
+    - assets/images/forms_strip.png

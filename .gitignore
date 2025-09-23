@@ -1,0 +1,29 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+
+# Builds
+build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+macos/Flutter/Flutter-Debug.xcconfig
+macos/Flutter/Flutter-Release.xcconfig
+macos/Flutter/GeneratedPluginRegistrant.swift
+
+# VS Code & IntelliJ
+.vscode/
+.idea/
+
+# Android
+android/.gradle/
+android/local.properties
+
+# Firebase config at root (copies placed under platform folders instead)
+android_google_services.json
+ios_GoogleService-Info.plist
+
