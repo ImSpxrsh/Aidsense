@@ -58,6 +58,84 @@ class HelpCenterScreen extends StatelessWidget {
   }
 }
 
+class FavoritesScreen extends StatelessWidget {
+  const FavoritesScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final primary = const Color(0xFFF48A8A);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Favorites'), backgroundColor: primary),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.restaurant)),
+              title: const Text('Food Bank for NYC'),
+              subtitle: const Text('55 Broadway, NYC'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.directions),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.favorite, color: Colors.red),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.home)),
+              title: const Text('St. Mark Emergency Shelter'),
+              subtitle: const Text('123 Market St, NYC'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.directions),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.favorite, color: Colors.red),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.local_pharmacy)),
+              title: const Text('MediCure Pharmacy'),
+              subtitle: const Text('100 Main St, Newark, NJ'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.directions),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.favorite, color: Colors.red),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
   @override

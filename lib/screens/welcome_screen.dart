@@ -17,7 +17,7 @@ class WelcomeScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset('assets/images/welcome.png', width:140, height:140),
+                      Image.asset('assets/images/splash_logo.svg', width:140, height:140),
                       SizedBox(height:18),
                       Text('AidSense', style: TextStyle(fontSize:28,fontWeight:FontWeight.bold)),
                       SizedBox(height:12),

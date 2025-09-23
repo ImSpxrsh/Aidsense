@@ -26,3 +26,6 @@ flutter:
     - assets/images/welcome.png
     - assets/images/onboarding_strip.png
     - assets/images/forms_strip.png
+    - assets/images/splash_logo.svg
+    - assets/images/onboarding_new.svg
+    - assets/images/forms_new.svg

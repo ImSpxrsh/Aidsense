@@ -1,40 +1,36 @@
-# AidSense Flutter App (Firebase Authentication)
 
-This project is a Flutter front-end scaffold integrated with Firebase Authentication for Android, iOS, and Web.
+# 🆘 Aidsense
 
-## What is included
-- Flutter app with screens:
-  - Welcome -> Onboarding -> Login -> Signup -> Reset Password -> Home
-- Firebase initialization (lib/firebase_options.dart) using your provided configs
-- `android_google_services.json` and `ios_GoogleService-Info.plist` included at project root (please move them to platform folders as described)
-- Web firebase init snippet at web/firebase_init.js
+**AI-powered crisis support for low-income communities**
 
-## How to run
+Aidsense is a mobile app designed to help individuals in crisis quickly find nearby support services like food banks, shelters, and clinics. By simply typing what they need in plain language, users are guided to real, local resources—no forms, no confusion.
 
-1. Install Flutter SDK.
+---
 
-2. Place platform config files:
-   - Android: move `android_google_services.json` to `android/app/google-services.json`
-   - iOS: move `ios_GoogleService-Info.plist` to `ios/Runner/GoogleService-Info.plist`
+## 🌟 Key Features
 
-3. (Optional) If you want to use Android Gradle plugin, ensure `android/build.gradle` has google-services plugin added. If you used `flutter create`, these files will be present.
+* Understands simple messages like “I need food” or “I lost my home”
+* Instantly finds local help near the user
+* Works with or without an internet connection
+* Available on both Android and iOS
 
-4. From project root:
-   ```
-   flutter pub get
-   flutter run
-   ```
+---
 
-5. For iOS: open `ios/Runner.xcworkspace` in Xcode, ensure signing & capabilities are set, then run in simulator.
+## 📱 How It Works
 
-6. For Web:
-   ```
-   flutter run -d chrome
-   ```
+1. **Type a message** — Users describe their situation in everyday language
+2. **Get matched** — The app interprets the need and finds local services
+3. **See results** — Nearby resources like food pantries or shelters are shown, even offline
+4. **Save and sort** — Users can bookmark services and sort by location
 
-## Notes
-- Email/password sign up sends verification email (optional).
-- Password reset sends an email via Firebase Auth.
-- Replace the placeholder images in `assets/images/` with higher-res exports if needed.
+---
 
-If you want, I can package this into a ZIP file now.
+## 📍 Built for NJ-09
+
+Aidsense focuses on serving communities in New Jersey's 9th congressional district, helping bridge the gap between people in need and the services that can help them.
+
+---
+
+## 🌐 Learn More ⬆️
+
+👉 [imspxrsh.github.io/Aidsense](https://imspxrsh.github.io/Aidsense)

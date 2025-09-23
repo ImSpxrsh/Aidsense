@@ -15,6 +15,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     setState(()=>_loading=true);
     try {
+      // Developer bypass login
+      if (_email.text.trim() == 'dev@aidsense.com' && _pass.text.trim() == 'dev123') {
+        Navigator.pushReplacementNamed(context, '/home');
+        return;
+      }
+      
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _email.text.trim(),
         password: _pass.text.trim(),
@@ -46,6 +52,22 @@ class _LoginScreenState extends State<LoginScreen> {
             SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _loading?null:_login, style: ElevatedButton.styleFrom(backgroundColor: primary, shape: StadiumBorder(), padding: EdgeInsets.symmetric(vertical:14)), child: _loading?CircularProgressIndicator(color: Colors.white):Text('Log In'))),
             SizedBox(height:12),
             TextButton(onPressed: ()=>Navigator.pushNamed(context, '/reset'), child: Text('Forgot password?')),
+            SizedBox(height:8),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                children: [
+                  Text('Developer Login:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800])),
+                  Text('Email: dev@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
+                  Text('Password: dev123', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
+                ],
+              ),
+            ),
             Spacer(),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text('No account? '), GestureDetector(onTap: ()=>Navigator.pushNamed(context, '/signup'), child: Text('Sign up', style: TextStyle(color: primary)))])
           ],
