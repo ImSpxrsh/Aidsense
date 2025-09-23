@@ -1,8 +1,4 @@
 
-# 🆘 Aidsense
-
-**AI-powered crisis support for low-income communities**
-
 Aidsense is a mobile app designed to help individuals in crisis quickly find nearby support services like food banks, shelters, and clinics. By simply typing what they need in plain language, users are guided to real, local resources—no forms, no confusion.
 
 ---
@@ -23,6 +19,10 @@ Aidsense is a mobile app designed to help individuals in crisis quickly find nea
 3. **See results** — Nearby resources like food pantries or shelters are shown, even offline
 4. **Save and sort** — Users can bookmark services and sort by location
 
+## Notes
+- Email/password sign up sends verification email (optional).
+- Password reset sends an email via Firebase Auth.
+=======
 ---
 
 ## 📍 Built for NJ-09
