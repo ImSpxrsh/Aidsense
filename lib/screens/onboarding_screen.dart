@@ -37,7 +37,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: Column(
                     children: [
                       SizedBox(height:8),
-                      Image.asset('assets/images/onboarding_strip.png', height:240, fit: BoxFit.contain),
+                      Image.asset('assets/images/onboarding_new.svg', height:240, fit: BoxFit.contain),
                       SizedBox(height:18),
                       Text(pages[i]['title']!, style: TextStyle(fontSize:22, fontWeight: FontWeight.bold, color: primary)),
                       SizedBox(height:8),
