@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               child: Column(
                 children: [
-                  Text('Developer Login (Delete Later - Sparsh :):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800])),
+                  Text('Developer Login (Delete Later - Sparsh :)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800])),
                   Text('Email: dev@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
                   Text('Password: dev123', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
                   SizedBox(height: 8),
