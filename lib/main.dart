@@ -9,6 +9,7 @@ import 'screens/reset_password_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/resource_detail_screen.dart';
 import 'screens/profile_screens.dart';
+import 'screens/admin_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +47,7 @@ class AidSenseApp extends StatelessWidget {
         '/password': (_) => const PasswordManagerScreen(),
         '/help': (_) => const HelpCenterScreen(),
         '/notifications': (_) => const NotificationsScreen(),
+        '/admin': (_) => const AdminScreen(),
       },
     );
   }

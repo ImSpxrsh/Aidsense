@@ -15,6 +15,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     setState(()=>_loading=true);
     try {
+      // Admin login check
+      if (_email.text.trim() == 'admin@aidsense.com' && _pass.text.trim() == 'admin123') {
+        Navigator.pushReplacementNamed(context, '/admin');
+        return;
+      }
+      
       // Developer bypass login
       if (_email.text.trim() == 'dev@aidsense.com' && _pass.text.trim() == 'dev123') {
         Navigator.pushReplacementNamed(context, '/home');
@@ -62,9 +68,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               child: Column(
                 children: [
-                  Text('Developer Login:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800])),
+                  Text('Developer Login (Delete Later - Sparsh :):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800])),
                   Text('Email: dev@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
                   Text('Password: dev123', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
+                  SizedBox(height: 8),
+                  Text('Admin Login:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red[800])),
+                  Text('Email: admin@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.red[700])),
+                  Text('Password: admin123', style: TextStyle(fontSize: 12, color: Colors.red[700])),
                 ],
               ),
             ),

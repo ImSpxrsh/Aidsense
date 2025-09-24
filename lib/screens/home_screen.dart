@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../services.dart';
 import '../models.dart';
+import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _tab,
         children: [
           _MapAndListTab(service: service),
-          const _ChatPlaceholder(),
+          const ChatScreen(),
           _ProfileTab(userEmail: user?.email ?? 'User'),
         ],
       ),
@@ -220,7 +221,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                     margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: primary.withOpacity(0.1),
+                        backgroundColor: primary.withValues(alpha: 0.1),
                         child: Icon(
                           _getResourceIcon(r.type),
                           color: primary,
@@ -236,7 +237,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                             children: [
                               Chip(
                                 label: Text(r.type),
-                                backgroundColor: primary.withOpacity(0.1),
+                                backgroundColor: primary.withValues(alpha: 0.1),
                                 labelStyle: TextStyle(color: primary, fontSize: 12),
                               ),
                               const SizedBox(width: 8),
@@ -276,14 +277,6 @@ class _MapAndListTabState extends State<_MapAndListTab> {
       default:
         return Icons.location_on;
     }
-  }
-}
-
-class _ChatPlaceholder extends StatelessWidget {
-  const _ChatPlaceholder();
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Chat coming soon'));
   }
 }
 

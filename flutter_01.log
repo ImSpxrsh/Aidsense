@@ -1,0 +1,97 @@
+Flutter crash report.
+Please report a bug at https://github.com/flutter/flutter/issues.
+
+## command
+
+flutter analyze
+
+## exception
+
+_Exception: Exception: analysis server exited with code 255 and output:
+[stderr] #49     AnalysisDriver._produceErrors (package:analyzer/src/dart/analysis/driver.dart:2047:38)
+[stderr] #50     AnalysisDriver.performWork (package:analyzer/src/dart/analysis/driver.dart:1267:7)
+[stderr] #51     AnalysisDriverScheduler._run (package:analyzer/src/dart/analysis/driver.dart:2659:24)
+[stderr] <asynchronous suspension>
+[stderr] 
+[stderr] 
+[stderr] #0      LibraryContext._throwLibraryCycleLinkException (package:analyzer/src/dart/analysis/library_context.dart:419:5)
+[stderr] #1      LibraryContext.load.loadBundle (package:analyzer/src/dart/analysis/library_context.dart:294:11)
+[stderr] #2      LibraryContext.load.loadBundle (package:analyzer/src/dart/analysis/library_context.dart:153:9)
+[stderr] #3      LibraryContext.load.<anonymous closure> (package:analyzer/src/dart/analysis/library_context.dart:344:7)
+[stderr] #4      PerformanceLog.run (package:analyzer/src/dart/analysis/performance_logger.dart:38:15)
+[stderr] #5      LibraryContext.load (package:analyzer/src/dart/analysis/library_context.dart:343:12)
+[stderr] #6      AnalysisDriver._produceErrors.<anonymous closure>.<anonymous closure> (package:analyzer/src/dart/analysis/driver.dart:2058:26)
+[stderr] #7      OperationPerformanceImpl.run (package:analyzer/src/util/performance/operation_performance.dart:155:23)
+[stderr] #8      AnalysisDriver._produceErrors.<anonymous closure> (package:analyzer/src/dart/analysis/driver.dart:2057:21)
+[stderr] #9      OperationPerformanceImpl.run (package:analyzer/src/util/performance/operation_performance.dart:155:23)
+[stderr] #10     AnalysisDriver._produceErrors (package:analyzer/src/dart/analysis/driver.dart:2047:38)
+[stderr] #11     AnalysisDriver.performWork (package:analyzer/src/dart/analysis/driver.dart:1267:7)
+[stderr] #12     AnalysisDriverScheduler._run (package:analyzer/src/dart/analysis/driver.dart:2659:24)
+[stderr] <asynchronous suspension>
+
+```
+```
+
+## flutter doctor
+
+```
+[32m[✓][39m Flutter (Channel stable, 3.32.8, on Microsoft Windows [Version 10.0.26100.6584], locale en-US) [1,323ms]
+    [32m•[39m Flutter version 3.32.8 on channel stable at C:\Users\gokuv\OneDrive\Desktop\Aidsennse\Aidsense\flutter
+    [32m•[39m Upstream repository https://github.com/flutter/flutter.git
+    [32m•[39m Framework revision edada7c56e (9 weeks ago), 2025-07-25 14:08:03 +0000
+    [32m•[39m Engine revision ef0cd00091
+    [32m•[39m Dart version 3.8.1
+    [32m•[39m DevTools version 2.45.1
+
+[32m[✓][39m Windows Version (11 Home 64-bit, 24H2, 2009) [2.8s]
+
+[33m[!][39m Android toolchain - develop for Android devices (Android SDK version 34.0.0) [1,198ms]
+    [32m•[39m Android SDK at C:\Users\gokuv\AppData\Local\Android\sdk
+    [31m✗[39m cmdline-tools component is missing.
+      Try installing or updating Android Studio.
+      Alternatively, download the tools from https://developer.android.com/studio#command-line-tools-only and make sure to set the ANDROID_HOME environment
+      variable.
+      See https://developer.android.com/studio/command-line for more details.
+    [31m✗[39m Android license status unknown.
+      Run `flutter doctor --android-licenses` to accept the SDK licenses.
+      See https://flutter.dev/to/windows-android-setup for more details.
+
+[31m[✗][39m Chrome - develop for the web (Cannot find Chrome executable at .\Google\Chrome\Application\chrome.exe) [858ms]
+    [33m![39m Cannot find Chrome. Try setting CHROME_EXECUTABLE to a Chrome executable.
+
+[33m[!][39m Visual Studio - develop Windows apps (Visual Studio Community 2022 17.14.12) [856ms]
+    [32m•[39m Visual Studio at C:\Program Files\Microsoft Visual Studio\2022\Community
+    [32m•[39m Visual Studio Community 2022 version 17.14.36408.4
+    [31m✗[39m Visual Studio is missing necessary components. Please re-run the Visual Studio installer for the "Desktop development with C++" workload, and include these
+      components:
+        MSVC v142 - VS 2019 C++ x64/x86 build tools
+         - If there are multiple build tool versions available, install the latest
+        C++ CMake tools for Windows
+        Windows 10 SDK
+
+[32m[✓][39m Android Studio (version 2025.1.2) [266ms]
+    [32m•[39m Android Studio at C:\Program Files\Android\Android Studio
+    [32m•[39m Flutter plugin can be installed from:
+      🔨 https://plugins.jetbrains.com/plugin/9212-flutter
+    [32m•[39m Dart plugin can be installed from:
+      🔨 https://plugins.jetbrains.com/plugin/6351-dart
+    [32m•[39m Java version OpenJDK Runtime Environment (build 21.0.7+-13880790-b1038.58)
+
+[32m[✓][39m IntelliJ IDEA Ultimate Edition (version 2024.3) [263ms]
+    [32m•[39m IntelliJ at C:\Program Files\JetBrains\IntelliJ IDEA 2024.3.5
+    [32m•[39m Flutter plugin version 86.0.1
+    [32m•[39m Dart plugin version 243.27824.5
+
+[32m[✓][39m VS Code (version 1.104.1) [25ms]
+    [32m•[39m VS Code at C:\Users\gokuv\AppData\Local\Programs\Microsoft VS Code
+    [32m•[39m Flutter extension version 3.118.0
+
+[32m[✓][39m Connected device (2 available) [275ms]
+    [32m•[39m Windows (desktop) • windows • windows-x64    • Microsoft Windows [Version 10.0.26100.6584]
+    [32m•[39m Edge (web)        • edge    • web-javascript • Microsoft Edge 140.0.3485.81
+
+[32m[✓][39m Network resources [308ms]
+    [32m•[39m All expected network resources are available.
+
+[33m![39m Doctor found issues in 3 categories.
+```

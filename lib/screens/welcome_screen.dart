@@ -22,7 +22,7 @@ class WelcomeScreen extends StatelessWidget {
                       Text('AidSense', style: TextStyle(fontSize:28,fontWeight:FontWeight.bold)),
                       SizedBox(height:12),
                       Text(
-                        'Connect communities with the resources they need.',
+                        'Connect communities with the resources they need. Made by Sparsh, Mohammed, Aarya, Arhaan /n for Congressional App Challange 2025',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize:14, color: Colors.grey[700]),
                       ),
