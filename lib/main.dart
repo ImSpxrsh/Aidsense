@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
@@ -33,8 +34,9 @@ class AidSenseApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'SF Pro',
       ),
-      initialRoute: '/',
+      initialRoute: '/splash',
       routes: {
+        '/splash': (_) => const SplashScreen(),
         '/': (_) => const WelcomeScreen(),
         '/onboarding': (_) => const OnboardingScreen(),
         '/login': (_) => const LoginScreen(),

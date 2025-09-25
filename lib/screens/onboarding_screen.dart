@@ -22,7 +22,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, actions: [
-        TextButton(onPressed: () => Navigator.pushReplacementNamed(context, '/login'), child: Text('Skip', style: TextStyle(color: primary)))
+        TextButton(onPressed: () => Navigator.pushReplacementNamed(context, '/'), child: Text('Skip', style: TextStyle(color: primary)))
       ]),
       body: Column(
         children: [
@@ -60,11 +60,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   if(_page < pages.length-1) {
                     _pc.nextPage(duration: Duration(milliseconds:300), curve: Curves.easeInOut);
                   } else {
-                    Navigator.pushReplacementNamed(context, '/login');
+                    Navigator.pushReplacementNamed(context, '/');
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: primary, shape: StadiumBorder(), padding: EdgeInsets.symmetric(vertical:14)),
-                child: Text(_page < pages.length-1 ? 'Next' : 'Continue to Login', style: TextStyle(fontSize:16)),
+                child: Text(_page < pages.length-1 ? 'Next' : 'Get Started', style: TextStyle(fontSize:16)),
               ),
             ),
           )
