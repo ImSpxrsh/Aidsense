@@ -28,7 +28,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     
     return Scaffold(
       appBar: AppBar(
@@ -77,7 +77,7 @@ class _ResourceListTabState extends State<_ResourceListTab> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     final filters = ['all', 'shelter', 'food', 'pharmacy', 'clinic'];
 
     return Column(
@@ -337,7 +337,7 @@ class _AddResourceTabState extends State<_AddResourceTab> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -363,7 +363,7 @@ class _AddResourceTabState extends State<_AddResourceTab> {
             const SizedBox(height: 16),
             
             DropdownButtonFormField<String>(
-              value: _selectedType,
+              initialValue: _selectedType,
               decoration: const InputDecoration(
                 labelText: 'Resource Type',
                 border: OutlineInputBorder(),

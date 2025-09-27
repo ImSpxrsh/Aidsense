@@ -4,7 +4,7 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     return Scaffold(
       appBar: AppBar(title: const Text('Settings'), backgroundColor: primary),
       body: ListView(children: const [
@@ -20,7 +20,7 @@ class PasswordManagerScreen extends StatelessWidget {
   const PasswordManagerScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     final c1 = TextEditingController();
     final c2 = TextEditingController();
     return Scaffold(
@@ -43,7 +43,7 @@ class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     return Scaffold(
       appBar: AppBar(title: const Text('Help Center'), backgroundColor: primary),
       body: ListView(
@@ -62,7 +62,7 @@ class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     return Scaffold(
       appBar: AppBar(title: const Text('Favorites'), backgroundColor: primary),
       body: ListView(
@@ -140,7 +140,7 @@ class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications'), backgroundColor: primary),
       body: ListView.separated(

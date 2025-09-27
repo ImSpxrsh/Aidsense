@@ -15,11 +15,16 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   cupertino_icons: ^1.0.2
+  google_maps_flutter: ^2.13.1
+  geolocator: ^14.0.2
+  location: ^5.0.0
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  
 
 flutter:
   uses-material-design: true
@@ -31,3 +36,7 @@ flutter:
     - assets/images/onboarding_new.svg
     - assets/images/forms_new.svg
     - assets/images/Logo.png
+    - assets/images/shelter_marker1.png
+    - assets/images/clinic_marker.png
+    - assets/images/food_bank_marker.png
+    - assets/images/person_marker.png

@@ -188,7 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     
     return Column(
       children: [

@@ -27,7 +27,7 @@ class _SignupScreenState extends State<SignupScreen> {
       final user = FirebaseAuth.instance.currentUser;
       await user?.sendEmailVerification();
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Account created. Verification email sent.')));
+          const SnackBar(content: Text('Account created. Verification email sent.')));
       Navigator.pushReplacementNamed(context, '/login');
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context)
@@ -42,7 +42,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFFF56565);
+    const primary = Color(0xFFF56565);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primary,

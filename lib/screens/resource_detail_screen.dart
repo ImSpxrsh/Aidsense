@@ -7,7 +7,7 @@ class ResourceDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Resource r = ModalRoute.of(context)!.settings.arguments as Resource;
-    final primary = const Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     return Scaffold(
       appBar: AppBar(title: Text(r.name), backgroundColor: primary),
       body: ListView(

@@ -43,24 +43,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Color(0xFFF48A8A);
+    const primary = Color(0xFFF48A8A);
     return Scaffold(
-      appBar: AppBar(backgroundColor: primary, title: Text('Log In')),
+      appBar: AppBar(backgroundColor: primary, title: const Text('Log In')),
       body: Padding(
-        padding: EdgeInsets.all(18),
+        padding: const EdgeInsets.all(18),
         child: Column(
           children: [
-            SizedBox(height:8),
-            TextField(controller: _email, decoration: InputDecoration(labelText: 'Email', filled: true, fillColor: Color(0xFFF0F8FF), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-            SizedBox(height:12),
-            TextField(controller: _pass, obscureText: true, decoration: InputDecoration(labelText: 'Password', filled: true, fillColor: Color(0xFFF0F8FF), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-            SizedBox(height:18),
-            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _loading?null:_login, style: ElevatedButton.styleFrom(backgroundColor: primary, shape: StadiumBorder(), padding: EdgeInsets.symmetric(vertical:14)), child: _loading?CircularProgressIndicator(color: Colors.white):Text('Log In'))),
-            SizedBox(height:12),
-            TextButton(onPressed: ()=>Navigator.pushNamed(context, '/reset'), child: Text('Forgot password?')),
-            SizedBox(height:8),
+            const SizedBox(height:8),
+            TextField(controller: _email, decoration: InputDecoration(labelText: 'Email', filled: true, fillColor: const Color(0xFFF0F8FF), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+            const SizedBox(height:12),
+            TextField(controller: _pass, obscureText: true, decoration: InputDecoration(labelText: 'Password', filled: true, fillColor: const Color(0xFFF0F8FF), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+            const SizedBox(height:18),
+            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _loading?null:_login, style: ElevatedButton.styleFrom(backgroundColor: primary, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(vertical:14)), child: _loading?const CircularProgressIndicator(color: Colors.white):const Text('Log In'))),
+            const SizedBox(height:12),
+            TextButton(onPressed: ()=>Navigator.pushNamed(context, '/reset'), child: const Text('Forgot password?')),
+            const SizedBox(height:8),
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.blue[50],
                 borderRadius: BorderRadius.circular(8),
@@ -71,15 +71,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text('Developer Login (Delete Later - Sparsh :)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800])),
                   Text('Email: dev@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
                   Text('Password: dev123', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text('Admin Login:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red[800])),
                   Text('Email: admin@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.red[700])),
                   Text('Password: admin123', style: TextStyle(fontSize: 12, color: Colors.red[700])),
                 ],
               ),
             ),
-            Spacer(),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text('No account? '), GestureDetector(onTap: ()=>Navigator.pushNamed(context, '/signup'), child: Text('Sign up', style: TextStyle(color: primary)))])
+            const Spacer(),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Text('No account? '), GestureDetector(onTap: ()=>Navigator.pushNamed(context, '/signup'), child: Text('Sign up', style: TextStyle(color: primary)))])
           ],
         ),
       ),
