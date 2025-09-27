@@ -11,9 +11,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _page = 0;
 
   List<Map<String,String>> pages = [
-    {'title':'Enter Your Location','subtitle':'Find nearby community resources easily.'},
-    {'title':'Find Resources Easily','subtitle':'Search and filter to find what you need.'},
-    {'title':'Join Your Community','subtitle':'Connect and share with local groups.'},
+    {
+      'title': 'Enter Your Location',
+      'subtitle': 'Find nearby community resources easily.',
+      'image': 'assets/images/onboarding_new.svg'
+    },
+    {
+      'title': 'Find Resources Easily',
+      'subtitle': 'Search and filter to find what you need.',
+      'image': 'assets/images/Onboardingscreenimage2.png'
+    },
+    {
+      'title': 'Join Your Community',
+      'subtitle': 'Connect and share with local groups.',
+      'image': 'assets/images/Onboardingscreenimage3.png'
+    },
   ];
 
   @override
@@ -22,7 +34,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, actions: [
-        TextButton(onPressed: () => Navigator.pushReplacementNamed(context, '/'), child: const Text('Skip', style: TextStyle(color: primary)))
+        Padding(
+          padding: const EdgeInsets.only(right: 12.0, bottom: 6.0),
+          child: TextButton(
+            onPressed: () => Navigator.pushReplacementNamed(context, '/'),
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            child: Row(mainAxisSize: MainAxisSize.min, children: const [
+              Text('Skip', style: TextStyle(color: primary, fontSize: 16)),
+              SizedBox(width: 6),
+              Icon(Icons.arrow_forward_ios, size: 14, color: primary),
+            ]),
+          ),
+        )
       ]),
       body: Column(
         children: [
@@ -37,34 +60,92 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height:8),
-                      Image.asset('assets/images/onboarding_new.svg', height:240, fit: BoxFit.contain),
+                      // enlarge images to better match the design
+                      Image.asset(
+                        pages[i]['image']!,
+                        height: MediaQuery.of(context).size.height * 0.38,
+                        fit: BoxFit.contain,
+                      ),
                       const SizedBox(height:18),
-                      Text(pages[i]['title']!, style: TextStyle(fontSize:22, fontWeight: FontWeight.bold, color: primary)),
-                      const SizedBox(height:8),
-                      Text(pages[i]['subtitle']!, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[700])),
+                      Text(
+                        pages[i]['title']!,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFB71C1C), // darker red
+                        ),
+                      ),
+                      const SizedBox(height:16),
+                      Text(
+                        pages[i]['subtitle']!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[700], fontSize: 15),
+                      ),
                     ],
                   ),
                 );
               },
             ),
           ),
+          // pagination indicators
           Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(pages.length, (index){
-            return Container(margin: const EdgeInsets.all(6), width: _page==index?14:8, height: 8, decoration: BoxDecoration(color: _page==index?primary:Colors.grey[300], borderRadius: BorderRadius.circular(8)));
+            return Container(
+              margin: const EdgeInsets.all(6),
+              width: _page==index?18:8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _page==index? primary : Colors.grey[300],
+                borderRadius: BorderRadius.circular(8),
+              ),
+            );
           })),
+
+          // bottom area with decorative half-oval behind the button
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal:24.0, vertical:20),
+            padding: const EdgeInsets.symmetric(horizontal:24.0, vertical:8),
             child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (){
-                  if(_page < pages.length-1) {
-                    _pc.nextPage(duration: const Duration(milliseconds:300), curve: Curves.easeInOut);
-                  } else {
-                    Navigator.pushReplacementNamed(context, '/');
-                  }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: primary, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(vertical:14)),
-                child: Text(_page < pages.length-1 ? 'Next' : 'Get Started', style: const TextStyle(fontSize:16)),
+              height: 90,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // decorative half-oval (top-rounded only so it reads like a half-oval)
+                  Positioned(
+                    bottom: 8,
+                    child: Container(
+                      width: 320,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: const Color.fromRGBO(200, 210, 220, 0.12),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(80)),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 26,
+                    child: Center(
+                      child: SizedBox(
+                        width: 240,
+                        height: 62,
+                        child: ElevatedButton(
+                          onPressed: (){
+                            if(_page < pages.length-1) {
+                              _pc.nextPage(duration: const Duration(milliseconds:300), curve: Curves.easeInOut);
+                            } else {
+                              Navigator.pushReplacementNamed(context, '/');
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primary,
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical:18),
+                            minimumSize: const Size.fromHeight(56),
+                          ),
+                          child: Text(_page < pages.length-1 ? 'Next' : 'Get Started', style: const TextStyle(fontSize:16, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                  )
+                ],
               ),
             ),
           )
