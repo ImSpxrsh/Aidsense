@@ -90,19 +90,12 @@ class _MapPageState extends State<MapPage> {
       );
     }
 
-    final allMarkers = Set<Marker>.of(_markers)
-      ..add(
-        Marker(
-          markerId: const MarkerId("user_position"),
-          position: _currentP!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: const InfoWindow(title: "Your Position"),
-        ),
-      );
+    final allMarkers = Set<Marker>.of(_markers);
     return _currentP == null
         ? const Center(child: Text('Loading...'))
         : GoogleMap(
-            initialCameraPosition: CameraPosition(target: _userPosition, zoom: 14),
+            initialCameraPosition:
+                CameraPosition(target: _userPosition, zoom: 14),
             markers: allMarkers,
             mapType: MapType.normal,
             onMapCreated: (GoogleMapController controller) {
@@ -112,7 +105,7 @@ class _MapPageState extends State<MapPage> {
             zoomGesturesEnabled: true,
             tiltGesturesEnabled: true,
             rotateGesturesEnabled: true,
-            myLocationButtonEnabled: false, 
+            myLocationButtonEnabled: false,
             style: ('''
       [
         {
@@ -122,10 +115,6 @@ class _MapPageState extends State<MapPage> {
       ]
     '''));
   }
-
-
-
-
 
   //Granting permission to access user's location
   Future<void> getLocationUpdates() async {
