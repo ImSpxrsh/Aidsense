@@ -17,7 +17,7 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   GoogleMapController? _mapController;
 
-  Location _locationController = new Location();
+  final Location _locationController = new Location();
 
   static const LatLng _userPosition = LatLng(40.7178, -74.0431);
   static const LatLng jerseyCityShelter =

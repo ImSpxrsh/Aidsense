@@ -40,6 +40,77 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  void _showTermsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Terms of Use'),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Welcome to AidSense!\n\n'
+            '1. ACCEPTANCE OF TERMS\n'
+            'By using AidSense, you agree to these terms.\n\n'
+            '2. USE OF SERVICE\n'
+            'AidSense connects users with community resources. Use responsibly.\n\n'
+            '3. USER CONDUCT\n'
+            'Be respectful and honest when using our platform.\n\n'
+            '4. PRIVACY\n'
+            'We protect your personal information as outlined in our Privacy Policy.\n\n'
+            '5. DISCLAIMER\n'
+            'Resource information is provided as-is. Always verify details directly.\n\n'
+            'For questions, contact: support@aidsense.com',
+            style: TextStyle(fontSize: 14),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Privacy Policy'),
+        content: const SingleChildScrollView(
+          child: Text(
+            'AidSense Privacy Policy\n\n'
+            '1. INFORMATION WE COLLECT\n'
+            '• Account information (name, email, zip code)\n'
+            '• Usage data and preferences\n'
+            '• Location data (with permission)\n\n'
+            '2. HOW WE USE INFORMATION\n'
+            '• Provide personalized resource recommendations\n'
+            '• Improve our services\n'
+            '• Send important notifications\n\n'
+            '3. INFORMATION SHARING\n'
+            'We do not sell personal information. We may share data with:\n'
+            '• Service providers (with proper safeguards)\n'
+            '• Legal authorities (when required)\n\n'
+            '4. DATA SECURITY\n'
+            'We use industry-standard security measures.\n\n'
+            '5. YOUR RIGHTS\n'
+            'You can access, update, or delete your data anytime.\n\n'
+            'Contact: privacy@aidsense.com\n'
+            'Last updated: September 2025',
+            style: TextStyle(fontSize: 14),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF56565);
@@ -98,22 +169,39 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 24),
 
             // Legal Text
-            RichText(
-              text: TextSpan(
-                style: const TextStyle(color: Color(0xFF718096), fontSize: 14),
-                children: [
-                  const TextSpan(text: 'By continuing, you agree to '),
-                  TextSpan(
-                    text: 'Terms of Use',
-                    style: TextStyle(color: primary),
+            Wrap(
+              children: [
+                const Text(
+                  'By continuing, you agree to ',
+                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
+                ),
+                GestureDetector(
+                  onTap: () => _showTermsDialog(context),
+                  child: Text(
+                    'Terms of Use',
+                    style: TextStyle(
+                      color: primary,
+                      decoration: TextDecoration.underline,
+                      fontSize: 14,
+                    ),
                   ),
-                  const TextSpan(text: ' and '),
-                  TextSpan(
-                    text: 'Privacy Policy.',
-                    style: TextStyle(color: primary),
+                ),
+                const Text(
+                  ' and ',
+                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
+                ),
+                GestureDetector(
+                  onTap: () => _showPrivacyDialog(context),
+                  child: Text(
+                    'Privacy Policy.',
+                    style: TextStyle(
+                      color: primary,
+                      decoration: TextDecoration.underline,
+                      fontSize: 14,
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
 

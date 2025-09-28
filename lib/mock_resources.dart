@@ -1,5 +1,4 @@
 import 'package:aidsense_app/models.dart';
-import 'package:flutter/material.dart';
 
 final List<Resource> mockResources = [
   Resource(
