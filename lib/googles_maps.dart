@@ -7,7 +7,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:location/location.dart';
 
-
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
 
@@ -73,36 +72,37 @@ class _MapPageState extends State<MapPage> {
   loadData() async {
     final Uint8List userIcon = await getImages(images[0], 50);
 
-      _markers.add(Marker(
-        markerId: const MarkerId("user"),
-        icon: BitmapDescriptor.bytes(userIcon),
-        position: _userPosition,
-        infoWindow: const InfoWindow(title: "Your Position"),
-      ));
-       // Then markers for each resource
-  for (int i = 0; i < mockResources.length; i++) {
-    final resource = mockResources[i];
-    final Uint8List markIcon;
+    _markers.add(Marker(
+      markerId: const MarkerId("user"),
+      icon: BitmapDescriptor.bytes(userIcon),
+      position: _userPosition,
+      infoWindow: const InfoWindow(title: "Your Position"),
+    ));
+    // Then markers for each resource
+    for (int i = 0; i < mockResources.length; i++) {
+      final resource = mockResources[i];
+      final Uint8List markIcon;
 
-    // Pick image depending on type
-    if (resource.type == 'shelter') {
-      markIcon = await getImages(images[1], 50);
-    } else if (resource.type == 'clinic') {
-      markIcon = await getImages(images[2], 50);
-    } else if (resource.type.contains('food')) {
-      markIcon = await getImages(images[3], 50);
-    } else {
-      markIcon = await getImages(images[1], 50); // default shelter icon
+      // Pick image depending on type
+      final type = resource.type.toLowerCase();
+      if (type.contains('shelter')) {
+        markIcon = await getImages(images[1], 50);
+      } else if (type.contains('clinic')) {
+        markIcon = await getImages(images[2], 50);
+      } else if (type.contains('food')) {
+        markIcon = await getImages(images[3], 50);
+      } else {
+        markIcon = await getImages(images[1], 50); // fallback
+      }
+
+      _markers.add(Marker(
+        markerId: MarkerId(resource.id),
+        icon: BitmapDescriptor.bytes(markIcon),
+        position: LatLng(resource.latitude, resource.longitude),
+        infoWindow: InfoWindow(title: resource.name),
+      ));
     }
 
-    _markers.add(Marker(
-      markerId: MarkerId(resource.id),
-      icon: BitmapDescriptor.bytes(markIcon),
-      position: LatLng(resource.latitude, resource.longitude),
-      infoWindow: InfoWindow(title: resource.name),
-    ));
-  }
-  
     setState(() {}); // refresh the map
   }
 

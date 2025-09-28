@@ -29,7 +29,7 @@ final List<Resource> mockResources = [
     name: "Mount Pisgah AME Food Pantry",
     address: "354 Forrest St, Jersey City, NJ 07304",
     type: "Food bank",
-    tags: ["Groceries", "free meals"],
+    tags: ["Groceries", "Free meals"],
     latitude: 40.7144747152555,
     longitude: -74.07840710912085,
     website: 'https://www.wearemtpisgah.org/',

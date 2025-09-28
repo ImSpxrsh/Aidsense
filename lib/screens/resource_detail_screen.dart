@@ -63,7 +63,6 @@ class ResourceDetailScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => DirectionsMapScreen(
-                        destination: LatLng(r.latitude, r.longitude),
                         markers: markers,
                         polylines: polylines,
                       ),
@@ -153,6 +152,6 @@ class FavoritesService extends ChangeNotifier {
     } else {
       _favorites.add(r);
     }
-    notifyListeners(); // important!
+    notifyListeners(); 
   }
 }
