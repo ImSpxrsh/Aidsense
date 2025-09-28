@@ -1,3 +1,4 @@
+import 'package:aidsense_app/mock_resources.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:typed_data';
@@ -5,6 +6,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:location/location.dart';
+
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -36,16 +38,16 @@ class _MapPageState extends State<MapPage> {
   // this the list of coordinates of the places
   final List<LatLng> _latLen = <LatLng>[
     _userPosition,
-    LatLng(40.72038814879095, -74.03860961247194),
+    LatLng(40.71688634345244, -74.03769481609896),
     LatLng(40.712378161806676, -74.07820608959999),
     LatLng(40.7144747152555, -74.07840710912085)
   ];
 
   List<String> names = [
     'Your Position',
-    'Shelter',
-    'Clinic',
-    'Food Bank',
+    "St Joseph's Home",
+    'The Jersey City Clinic',
+    'Mount Pisgah AME Food Pantry',
   ];
 
   // This is to get the Images
@@ -69,15 +71,38 @@ class _MapPageState extends State<MapPage> {
   }
 
   loadData() async {
-    for (int i = 0; i < images.length; i++) {
-      final Uint8List markIcons = await getImages(images[i], 50);
+    final Uint8List userIcon = await getImages(images[0], 50);
+
       _markers.add(Marker(
-        markerId: MarkerId(i.toString()),
-        icon: BitmapDescriptor.bytes(markIcons),
-        position: _latLen[i],
-        infoWindow: InfoWindow(title: names[i]),
+        markerId: const MarkerId("user"),
+        icon: BitmapDescriptor.bytes(userIcon),
+        position: _userPosition,
+        infoWindow: const InfoWindow(title: "Your Position"),
       ));
+       // Then markers for each resource
+  for (int i = 0; i < mockResources.length; i++) {
+    final resource = mockResources[i];
+    final Uint8List markIcon;
+
+    // Pick image depending on type
+    if (resource.type == 'shelter') {
+      markIcon = await getImages(images[1], 50);
+    } else if (resource.type == 'clinic') {
+      markIcon = await getImages(images[2], 50);
+    } else if (resource.type.contains('food')) {
+      markIcon = await getImages(images[3], 50);
+    } else {
+      markIcon = await getImages(images[1], 50); // default shelter icon
     }
+
+    _markers.add(Marker(
+      markerId: MarkerId(resource.id),
+      icon: BitmapDescriptor.bytes(markIcon),
+      position: LatLng(resource.latitude, resource.longitude),
+      infoWindow: InfoWindow(title: resource.name),
+    ));
+  }
+  
     setState(() {}); // refresh the map
   }
 

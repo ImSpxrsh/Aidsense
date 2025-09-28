@@ -1,4 +1,5 @@
 import 'package:aidsense_app/googles_maps.dart';
+import 'package:aidsense_app/mock_resources.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -93,7 +94,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
         children: [
           // Search bar
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -118,6 +119,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
+
           // Filter chips
           SizedBox(
             height: 46,
@@ -137,7 +139,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
               itemCount: filters.length,
             ),
           ),
-          Expanded(flex: 2, child: MapPage()),
+          const Expanded(flex: 2, child: MapPage()),
           Expanded(
             flex: 2,
             child: StreamBuilder<List<Resource>>(
@@ -166,7 +168,9 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                   );
                 }
       
-                final allResources = snapshot.data ?? sampleResources;
+                final allResources = (snapshot.data == null || snapshot.data!.isEmpty)
+    ? mockResources
+    : snapshot.data!;
       
                 // Filter resources based on search and filter
                 final filteredResources = allResources.where((r) {
@@ -179,7 +183,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                           tag.toLowerCase().contains(_searchQuery.toLowerCase()));
       
                   final matchesFilter =
-                      _selectedFilter == 'all' || r.type == _selectedFilter;
+                      _selectedFilter == 'all' || r.type.toLowerCase().contains(_selectedFilter.toLowerCase());
       
                   return matchesSearch && matchesFilter;
                 }).toList();
