@@ -45,42 +45,196 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
     return Scaffold(
-      appBar: AppBar(backgroundColor: primary, title: const Text('Log In')),
-      body: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            const SizedBox(height:8),
-            TextField(controller: _email, decoration: InputDecoration(labelText: 'Email', filled: true, fillColor: const Color(0xFFF0F8FF), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-            const SizedBox(height:12),
-            TextField(controller: _pass, obscureText: true, decoration: InputDecoration(labelText: 'Password', filled: true, fillColor: const Color(0xFFF0F8FF), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-            const SizedBox(height:18),
-            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _loading?null:_login, style: ElevatedButton.styleFrom(backgroundColor: primary, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(vertical:14)), child: _loading?const CircularProgressIndicator(color: Colors.white):const Text('Log In'))),
-            const SizedBox(height:12),
-            TextButton(onPressed: ()=>Navigator.pushNamed(context, '/reset'), child: const Text('Forgot password?')),
-            const SizedBox(height:8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: primary),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              // Welcome back header
+              const Text(
+                'Welcome Back!',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFB71C1C),
+                ),
               ),
-              child: Column(
-                children: [
-                  Text('Developer Login (Delete Later - Sparsh :)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800])),
-                  Text('Email: dev@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
-                  Text('Password: dev123', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
-                  const SizedBox(height: 8),
-                  Text('Admin Login:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red[800])),
-                  Text('Email: admin@aidsense.com', style: TextStyle(fontSize: 12, color: Colors.red[700])),
-                  Text('Password: admin123', style: TextStyle(fontSize: 12, color: Colors.red[700])),
-                ],
+              const SizedBox(height: 8),
+              Text(
+                'Sign in to continue accessing your community resources.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
               ),
-            ),
-            const Spacer(),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Text('No account? '), GestureDetector(onTap: ()=>Navigator.pushNamed(context, '/signup'), child: Text('Sign up', style: TextStyle(color: primary)))])
-          ],
+              const SizedBox(height: 40),
+              
+              // Email field
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: TextField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address',
+                    labelStyle: TextStyle(color: Colors.grey[600]),
+                    prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[500]),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Password field
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: TextField(
+                  controller: _pass,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: TextStyle(color: Colors.grey[600]),
+                    prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[500]),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Forgot password
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/reset'),
+                  child: Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Login button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
+                  ),
+                  child: _loading 
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Sign In',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Developer/Admin login info
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue[100]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.developer_mode, color: Colors.blue[700], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Development Access',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[800],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Dev: dev@aidsense.com • dev123',
+                      style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                    ),
+                    Text(
+                      'Admin: admin@aidsense.com • admin123',
+                      style: TextStyle(fontSize: 12, color: Colors.red[700]),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const Spacer(),
+              
+              // Sign up link
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Don't have an account? ",
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/signup'),
+                      child: Text(
+                        'Sign Up',
+                        style: TextStyle(
+                          color: primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );

@@ -40,7 +40,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             onPressed: () => Navigator.pushReplacementNamed(context, '/'),
             style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
             child: Row(mainAxisSize: MainAxisSize.min, children: const [
-              Text('Skip', style: TextStyle(color: primary, fontSize: 16)),
+              Text('Skip', style: TextStyle(color: primary, fontSize: 16, fontWeight: FontWeight.w500)),
               SizedBox(width: 6),
               Icon(Icons.arrow_forward_ios, size: 14, color: primary),
             ]),
@@ -136,11 +136,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primary,
+                            foregroundColor: Colors.white,
                             shape: const StadiumBorder(),
                             padding: const EdgeInsets.symmetric(vertical:18),
                             minimumSize: const Size.fromHeight(56),
                           ),
-                          child: Text(_page < pages.length-1 ? 'Next' : 'Get Started', style: const TextStyle(fontSize:16, color: Colors.white)),
+                          child: Text(_page < pages.length-1 ? 'Next' : 'Get Started', style: const TextStyle(fontSize:16, color: Colors.white, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ),
