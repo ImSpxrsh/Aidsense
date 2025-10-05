@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+
+final OPENAI_API_KEY = dotenv.env['OPENAI_API_KEY'];
+
+
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -13,18 +21,74 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
+
+  Future<String> getGpt5NanoResponse(List<Map<String, String>> messages) async {
+    final url = Uri.parse('https://api.openai.com/v1/chat/completions');
+
+    final fullMessages = [
+      {
+        "role": "system",
+        "content":
+            "You are a helpful assistant that suggests local resources based on the user's request. Be concise."
+      },
+      ...messages,
+    ];
+
+    final body = jsonEncode({
+      "model": "gpt-5-nano",
+      "messages": fullMessages,
+      "temperature": 1,
+      "max_completion_tokens": 1500,
+    });
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $OPENAI_API_KEY",
+      },
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final choices = data['choices'];
+      if (choices != null && choices.isNotEmpty) {
+        final message = choices[0]['message'];
+        if (message != null && message['content'] != null) {
+          final content = message['content'].toString().trim();
+          if (content.isNotEmpty) {
+            return content;
+          }
+        }
+      }
+    } else {
+      throw Exception(
+          'Failed to get response: ${response.statusCode} ${response.body}');
+    }
+
+    // Ensure a return for all other cases
+    return "Sorry, I couldn't generate a response. Try asking something else.";
+  }
+
   final ResourceService _resourceService = ResourceService();
   bool _isTyping = false;
+
+ 
+
+  
 
   @override
   void initState() {
     super.initState();
     _addWelcomeMessage();
+
   }
 
   void _addWelcomeMessage() {
     _messages.add(ChatMessage(
-      text: "Hello! I'm here to help you find resources in your community. You can ask me things like:\n\n• 'I need food tonight'\n• 'Where can I find shelter?'\n• 'I need medical help'\n• 'Show me pharmacies nearby'\n• 'I need mental health support'\n\n**Crisis Support Available 24/7** 🆘\nIf you're in crisis, I can provide immediate helpline numbers and connect you to professional support.\n\nWhat can I help you with today?",
+      text:
+          "Hello! I'm here to help you find resources in your community. You can ask me things like:\n\n• 'I need food tonight'\n• 'Where can I find shelter?'\n• 'I need medical help'\n• 'Show me pharmacies nearby'\n• 'I need mental health support'\n\n**Crisis Support Available 24/7** 🆘\nIf you're in crisis, I can provide immediate helpline numbers and connect you to professional support.\n\nWhat can I help you with today?",
       isUser: false,
       timestamp: DateTime.now(),
     ));
@@ -45,10 +109,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.clear();
     _scrollToBottom();
 
-    await Future.delayed(const Duration(seconds: 1));
-
     final response = await _processUserMessage(message);
-    
+
     setState(() {
       _messages.add(ChatMessage(
         text: response.text,
@@ -62,117 +124,91 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
-  Future<ChatResponse> _processUserMessage(String message) async {
-    final lowerMessage = message.toLowerCase();
-    final resources = await _resourceService.fetchResourcesOnce();
-    
-    List<Resource> suggestedResources = [];
-    String responseText = "";
+  Future<void> getChatResponse(ChatMessage m) async {
+    setState(() {
+      _messages.add(m);
+      _isTyping = true;
+    });
 
-    // CRISIS RESPONSE KEYWORDS (highest priority)
-    if (lowerMessage.contains('suicide') || lowerMessage.contains('kill myself') || 
-        lowerMessage.contains('end my life') || lowerMessage.contains('want to die') || 
-        lowerMessage.contains('suicidal') || lowerMessage.contains('harm myself')) {
-      responseText = "🚨 **IMMEDIATE HELP AVAILABLE** 🚨\n\n"
-          "If you're having thoughts of suicide, please reach out for help immediately:\n\n"
-          " **National Suicide Prevention Lifeline**: 988 or 1-800-273-8255\n"
-          " **Crisis Text Line**: Text HOME to 741741\n"
-          " **Online Chat**: suicidepreventionlifeline.org\n\n"
-          "You are not alone, and your life has value. These trained counselors are available 24/7 and want to help.";
-      
-      suggestedResources = resources.where((r) => 
-        r.type.toLowerCase().contains('mental') || 
-        r.tags.any((tag) => tag.toLowerCase().contains('mental') || 
-                           tag.toLowerCase().contains('counseling') ||
-                           tag.toLowerCase().contains('therapy'))
-      ).toList();
-    } 
-    else if (lowerMessage.contains('depression') || lowerMessage.contains('depressed') || 
-             lowerMessage.contains('anxiety') || lowerMessage.contains('mental health') ||
-             lowerMessage.contains('counseling') || lowerMessage.contains('therapy')) {
-      responseText = "💙 **Mental Health Support** 💙\n\n"
-          "It's brave to reach out for mental health support. Here are immediate resources:\n\n"
-          "📞 **SAMHSA National Helpline**: 1-800-662-4357 (24/7, free)\n"
-          "📞 **Crisis Text Line**: Text HOME to 741741\n"
-          "📞 **NAMI Helpline**: 1-800-950-6264\n\n"
-          "Professional help is available, and you deserve support.";
-          
-      suggestedResources = resources.where((r) => 
-        r.type.toLowerCase().contains('mental') || 
-        r.tags.any((tag) => tag.toLowerCase().contains('mental') || 
-                           tag.toLowerCase().contains('counseling') ||
-                           tag.toLowerCase().contains('therapy'))
-      ).toList();
+    final messagesForApi = _messages.map((msg) {
+      return {"role": msg.isUser ? "user" : "assistant", "content": msg.text};
+    }).toList();
+
+    try {
+      final responseText = await getGpt5NanoResponse(messagesForApi);
+
+      setState(() {
+        _messages.add(ChatMessage(
+          text: responseText,
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+        _isTyping = false;
+      });
+    } catch (e) {
+      setState(() {
+        _messages.add(ChatMessage(
+          text: "Error: $e",
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+        _isTyping = false;
+      });
     }
-    else if (lowerMessage.contains('abuse') || lowerMessage.contains('domestic violence') || 
-             lowerMessage.contains('being hurt') || lowerMessage.contains('unsafe at home')) {
-      responseText = "🛡️ **Safety First** 🛡️\n\n"
-          "If you're experiencing abuse, you deserve safety and support:\n\n"
-          "📞 **National Domestic Violence Hotline**: 1-800-799-7233\n"
-          "📱 **Text**: START to 88788\n"
-          "🌐 **Online Chat**: thehotline.org\n\n"
-          "These services are confidential and available 24/7. Your safety matters.";
-          
-      suggestedResources = resources.where((r) => 
-        r.tags.any((tag) => tag.toLowerCase().contains('shelter') || 
-                           tag.toLowerCase().contains('safety') ||
-                           tag.toLowerCase().contains('women') ||
-                           tag.toLowerCase().contains('domestic'))
-      ).toList();
-    }
-    else if (lowerMessage.contains('addiction') || lowerMessage.contains('substance') || 
-             lowerMessage.contains('alcohol') || lowerMessage.contains('drug problem') ||
-             lowerMessage.contains('overdose')) {
-      responseText = "🤝 **Addiction Support** 🤝\n\n"
-          "Recovery is possible, and help is available:\n\n"
-          "📞 **SAMHSA Treatment Locator**: 1-800-662-4357\n"
-          "📞 **Narcotics Anonymous**: 1-818-773-9999\n"
-          "📞 **Alcoholics Anonymous**: Check aa.org for local meetings\n\n"
-          "Recovery takes courage, and you're taking the first step by reaching out.";
-          
-      suggestedResources = resources.where((r) => 
-        r.tags.any((tag) => tag.toLowerCase().contains('addiction') || 
-                           tag.toLowerCase().contains('recovery') ||
-                           tag.toLowerCase().contains('substance'))
-      ).toList();
-    }
-    // REGULAR RESOURCE KEYWORDS
-    else if (lowerMessage.contains('food') || lowerMessage.contains('hungry') || lowerMessage.contains('eat')) {
-      suggestedResources = resources.where((r) => r.type == 'food').toList();
-      responseText = "I found ${suggestedResources.length} food resources near you. These include food banks, pantries, and meal programs:";
-    } else if (lowerMessage.contains('shelter') || lowerMessage.contains('home') || lowerMessage.contains('sleep') || lowerMessage.contains('homeless')) {
-      suggestedResources = resources.where((r) => r.type == 'shelter').toList();
-      responseText = "Here are ${suggestedResources.length} shelter options I found for you:";
-    } else if (lowerMessage.contains('medicine') || lowerMessage.contains('pharmacy') || lowerMessage.contains('prescription') || lowerMessage.contains('drug')) {
-      suggestedResources = resources.where((r) => r.type == 'pharmacy').toList();
-      responseText = "I found ${suggestedResources.length} pharmacies that can help with your medication needs:";
-    } else if (lowerMessage.contains('doctor') || lowerMessage.contains('medical') || lowerMessage.contains('clinic') || lowerMessage.contains('sick') || lowerMessage.contains('health')) {
-      suggestedResources = resources.where((r) => r.type == 'clinic').toList();
-      responseText = "Here are ${suggestedResources.length} medical facilities that can provide healthcare services:";
-    } else if (lowerMessage.contains('help') || lowerMessage.contains('emergency') || lowerMessage.contains('crisis')) {
-      suggestedResources = resources.take(3).toList(); // Show top 3 resources
-      responseText = "I'm here to help! Here are some essential resources that might be useful in your situation. If this is a medical emergency, please call 911 immediately.";
-    } else {
-      // General search across all resources
-      suggestedResources = resources.where((r) => 
-        r.name.toLowerCase().contains(lowerMessage) ||
-        r.tags.any((tag) => tag.toLowerCase().contains(lowerMessage)) ||
-        r.address.toLowerCase().contains(lowerMessage)
-      ).toList();
-      
-      if (suggestedResources.isEmpty) {
-        responseText = "I couldn't find specific resources for your request, but here are some general community resources that might help:";
-        suggestedResources = resources.take(3).toList();
-      } else {
-        responseText = "I found ${suggestedResources.length} resources related to your request:";
+
+    _scrollToBottom();
+  }
+
+  Future<ChatResponse> _processUserMessage(String message) async {
+  final lowerMessage = message.toLowerCase().trim();
+  final resources = await _resourceService.fetchResourcesOnce();
+  print("Fetched ${resources.length} resources from service"); // DEBUG
+
+  final Set<Resource> suggestedResources = {};
+
+  final Map<String, List<String>> explicitRequests = {
+    'shelter': ['i need shelter'],
+    'food': ['i need food'],
+    'clinic': ['i need medical help', 'i need a doctor', 'i need a clinic'],
+    'pharmacy': ['i need medication', 'i need a pharmacy'],
+    'mental': ['i need therapy', 'i need counseling', 'i need mental help'],
+  };
+
+  for (final type in explicitRequests.keys) {
+    for (final phrase in explicitRequests[type]!) {
+      if (lowerMessage.contains(phrase)) {
+        final matched = resources.where((r) => r.type.toLowerCase() == type);
+        print("Matched ${matched.length} resources for $type"); // DEBUG
+        suggestedResources.addAll(matched);
+        break;
       }
     }
-
-    return ChatResponse(
-      text: responseText,
-      resources: suggestedResources.take(5).toList(), // Limit to 5 suggestions
-    );
   }
+
+  if (suggestedResources.isEmpty && resources.isNotEmpty) {
+    suggestedResources.addAll(resources.take(3));
+    print("No explicit match, fallback to first 3 resources"); // DEBUG
+  }
+
+  String gptResponse;
+  try {
+    gptResponse = await getGpt5NanoResponse([
+      {"role": "user", "content": message}
+    ]);
+  } catch (e) {
+    gptResponse =
+        "I couldn't fully process your request, but here are some helpful resources:";
+    print('Error fetching GPT response: $e');
+  }
+
+  print("Returning ${suggestedResources.length} suggested resources"); // DEBUG
+
+  return ChatResponse(
+    text: gptResponse,
+    resources: suggestedResources.toList(),
+  );
+}
+
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -189,7 +225,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
-    
+
     return Column(
       children: [
         Expanded(
@@ -224,7 +260,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                   ),
                   maxLines: null,
                   onSubmitted: _sendMessage,
@@ -249,10 +286,13 @@ class _ChatScreenState extends State<ChatScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
-        crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: message.isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!message.isUser)
@@ -268,8 +308,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: BoxDecoration(
                     color: message.isUser ? primary : Colors.grey[100],
                     borderRadius: BorderRadius.circular(16).copyWith(
-                      bottomRight: message.isUser ? const Radius.circular(4) : null,
-                      bottomLeft: !message.isUser ? const Radius.circular(4) : null,
+                      bottomRight:
+                          message.isUser ? const Radius.circular(4) : null,
+                      bottomLeft:
+                          !message.isUser ? const Radius.circular(4) : null,
                     ),
                   ),
                   child: Text(
@@ -290,14 +332,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
             ],
           ),
-          if (message.suggestedResources != null && message.suggestedResources!.isNotEmpty)
+          if (message.suggestedResources != null &&
+              message.suggestedResources!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: message.suggestedResources!.map((resource) => 
-                  _buildResourceCard(resource, primary)
-                ).toList(),
+                children: message.suggestedResources!
+                    .map((resource) => _buildResourceCard(resource, primary))
+                    .toList(),
               ),
             ),
         ],
@@ -306,6 +349,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildResourceCard(Resource resource, Color primary) {
+    print("Building resource card: ${resource.name}, ${resource.type}"); // DEBUG
     return Card(
       margin: const EdgeInsets.only(bottom: 8, left: 40),
       child: ListTile(
@@ -317,7 +361,8 @@ class _ChatScreenState extends State<ChatScreen> {
             size: 18,
           ),
         ),
-        title: Text(resource.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        title: Text(resource.name,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -335,7 +380,8 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () => Navigator.pushNamed(context, '/resource', arguments: resource),
+        onTap: () =>
+            Navigator.pushNamed(context, '/resource', arguments: resource),
       ),
     );
   }
@@ -348,7 +394,8 @@ class _ChatScreenState extends State<ChatScreen> {
           CircleAvatar(
             backgroundColor: const Color(0xFFF48A8A).withValues(alpha: 0.1),
             radius: 16,
-            child: const Icon(Icons.support_agent, color: Color(0xFFF48A8A), size: 18),
+            child: const Icon(Icons.support_agent,
+                color: Color(0xFFF48A8A), size: 18),
           ),
           const SizedBox(width: 8),
           Container(
