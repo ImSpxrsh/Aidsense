@@ -3,7 +3,8 @@ import 'models.dart';
 
 class ResourceService {
   final FirebaseFirestore firestore;
-  ResourceService({FirebaseFirestore? instance}) : firestore = instance ?? FirebaseFirestore.instance;
+  ResourceService({FirebaseFirestore? instance})
+      : firestore = instance ?? FirebaseFirestore.instance;
 
   Stream<List<Resource>> watchResources() {
     try {
@@ -14,13 +15,17 @@ class ResourceService {
     }
   }
 
+  // Future<List<Resource>> fetchResourcesOnce() async {
+  //   try {
+  //     final query = await firestore.collection('resources').get();
+  //     return query.docs.map((d) => Resource.fromMap(d.id, d.data())).toList();
+  //   } catch (_) {
+  //     return sampleResources;
+  //   }
+  // }
   Future<List<Resource>> fetchResourcesOnce() async {
-    try {
-      final query = await firestore.collection('resources').get();
-      return query.docs.map((d) => Resource.fromMap(d.id, d.data())).toList();
-    } catch (_) {
-      return sampleResources;
-    }
+    await Future.delayed(Duration(seconds: 1)); // simulate network
+    return sampleResources;
   }
 }
 
@@ -59,5 +64,3 @@ final List<Resource> sampleResources = [
     website: 'https://example.com/pharmacy',
   ),
 ];
-
-
