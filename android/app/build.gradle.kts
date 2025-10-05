@@ -1,9 +1,18 @@
+import java.util.Properties
+
+val flutterEnv = Properties()
+val envFile = rootProject.file(".env")
+if (envFile.exists()) {
+    envFile.inputStream().use { flutterEnv.load(it) }
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
 
 android {
     namespace = "com.example.aidsense_app"
@@ -27,6 +36,7 @@ android {
         versionName = "1.0.0"
         
         multiDexEnabled = true
+        resValue("string", "google_maps_key", flutterEnv.getProperty("MAPS_API_KEY") ?: "")
     }
 
     buildTypes {

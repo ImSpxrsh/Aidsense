@@ -27,3 +27,14 @@ android/local.properties
 android_google_services.json
 ios_GoogleService-Info.plist
 
+# 🔒 Environment & secrets
+.env
+.env.local
+.env.production
+.env.staging
+
+
+
+# Other sensitive files
+*.p12
+*.mobileprovision

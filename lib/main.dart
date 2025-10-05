@@ -11,12 +11,21 @@ import 'screens/home_screen.dart';
 import 'screens/resource_detail_screen.dart';
 import 'screens/profile_screens.dart';
 import 'screens/admin_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load .env from root
+  await dotenv.load(fileName: ".env");
+
+  print('Loaded OpenAI key: ${dotenv.env['OPENAI_API_KEY']}'); // Debug line
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  print("Firebase initialized successfully");
+
   runApp(const AidSenseApp());
 }
 

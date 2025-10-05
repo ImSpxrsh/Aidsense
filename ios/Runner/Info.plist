@@ -49,7 +49,15 @@
 	<string>We need your location to show nearby resources on the map</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>We need your location to show nearby resources on the map</string>
-	
+	<!-- Allow local network access (needed for some network requests / APIs) -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs access to the local network to fetch resources and interact with devices on your network.</string>
+
+	<!-- Bonjour/mDNS services (optional, only if your app uses service discovery) -->
+	<key>NSBonjourServices</key>
+	<array>
+    	<string>_http._tcp</string>
+	</array>
 
 </dict>
 </plist>

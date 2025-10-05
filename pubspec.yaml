@@ -20,13 +20,15 @@ dependencies:
   location: ^5.0.0
   flutter_polyline_points: ^3.1.0
   http: ^1.5.0
-
+  flutter_dotenv: ^6.0.0
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+
+
   
 
 flutter:
@@ -45,3 +47,4 @@ flutter:
     - assets/images/clinic_marker.png
     - assets/images/food_bank_marker.png
     - assets/images/person_marker.png
+    - .env
