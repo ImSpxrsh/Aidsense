@@ -170,44 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Developer/Admin login info
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[100]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.developer_mode, color: Colors.blue[700], size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Development Access',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Dev: dev@aidsense.com • dev123',
-                      style: TextStyle(fontSize: 12, color: Colors.blue[700]),
-                    ),
-                    Text(
-                      'Admin: admin@aidsense.com • admin123',
-                      style: TextStyle(fontSize: 12, color: Colors.red[700]),
-                    ),
-                  ],
-                ),
-              ),
-              
+              // Deleted developer login info as we get closer to production 
               const Spacer(),
               
               // Sign up link
