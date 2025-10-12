@@ -19,8 +19,6 @@ Future<void> main() async {
   // Load .env from root
   await dotenv.load(fileName: ".env");
 
-  print('Loaded OpenAI key: ${dotenv.env['OPENAI_API_KEY']}'); // Debug line
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

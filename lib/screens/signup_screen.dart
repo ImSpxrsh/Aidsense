@@ -26,8 +26,8 @@ class _SignupScreenState extends State<SignupScreen> {
       // After sign up, send email verification optionally
       final user = FirebaseAuth.instance.currentUser;
       await user?.sendEmailVerification();
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account created. Verification email sent.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Account created. Verification email sent.')));
       Navigator.pushReplacementNamed(context, '/login');
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context)
@@ -127,12 +127,10 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
           children: [
-            // Full Name Field
             _buildInputField(
               label: 'Full name',
               controller: _fullName,
@@ -140,11 +138,9 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Password Field
-            _buildPasswordField(),
+            PasswordField(controller: _pass),
             const SizedBox(height: 20),
 
-            // Email Field
             _buildInputField(
               label: 'Email',
               controller: _email,
@@ -152,7 +148,6 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Mobile Number Field
             _buildInputField(
               label: 'Mobile Number',
               controller: _mobileNumber,
@@ -160,87 +155,56 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Date of Birth Field
             _buildInputField(
               label: 'Date Of Birth',
               controller: _dateOfBirth,
               placeholder: 'DD / MM / YYYY',
             ),
             const SizedBox(height: 24),
-
-            // Legal Text
-            Wrap(
-              children: [
-                const Text(
-                  'By continuing, you agree to ',
-                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
-                ),
-                GestureDetector(
-                  onTap: () => _showTermsDialog(context),
-                  child: Text(
-                    'Terms of Use',
-                    style: TextStyle(
-                      color: primary,
-                      decoration: TextDecoration.underline,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const Text(
-                  ' and ',
-                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
-                ),
-                GestureDetector(
-                  onTap: () => _showPrivacyDialog(context),
-                  child: Text(
-                    'Privacy Policy.',
-                    style: TextStyle(
-                      color: primary,
-                      decoration: TextDecoration.underline,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
             // Sign Up Button
-            Container(
-              width: double.infinity,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFFB6C1), // Light pink
-                    Color(0xFFFFA07A), // Salmon pink
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: ElevatedButton(
-                onPressed: _loading ? null : _signup,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
+            StatefulBuilder(
+              builder: (context, setLocalState) {
+                return Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFB6C1), Color(0xFFFFA07A)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                     borderRadius: BorderRadius.circular(28),
                   ),
-                ),
-                child: _loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Sign Up',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  child: ElevatedButton(
+                    onPressed: _loading
+                        ? null
+                        : () async {
+                            setLocalState(() => _loading = true);
+                            await _signup();
+                            setLocalState(() => _loading = false);
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
                       ),
-              ),
+                    ),
+                    child: _loading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Sign Up',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                );
+              },
             ),
+
             const SizedBox(height: 24),
 
             // Social Sign Up
@@ -326,7 +290,46 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildPasswordField() {
+  Widget _buildSocialButton(String text, VoidCallback onTap, {IconData? icon}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: const BoxDecoration(
+          color: Color(0xFFFFB6C1),
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: icon != null
+              ? Icon(icon, color: Colors.white, size: 24)
+              : Text(
+                  text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class PasswordField extends StatefulWidget {
+  final TextEditingController controller;
+  const PasswordField({required this.controller, super.key});
+
+  @override
+  State<PasswordField> createState() => _PasswordFieldState();
+}
+
+class _PasswordFieldState extends State<PasswordField> {
+  bool _obscurePassword = true;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -340,7 +343,7 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         const SizedBox(height: 8),
         TextField(
-          controller: _pass,
+          controller: widget.controller,
           obscureText: _obscurePassword,
           decoration: InputDecoration(
             hintText: '............',
@@ -367,32 +370,6 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSocialButton(String text, VoidCallback onTap, {IconData? icon}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFFB6C1),
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: icon != null
-              ? Icon(icon, color: Colors.white, size: 24)
-              : Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-      ),
     );
   }
 }

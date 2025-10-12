@@ -137,7 +137,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
               itemCount: filters.length,
             ),
           ),
-          const Expanded(flex: 2, child: MapPage()),
+          Expanded(flex: 2, child: MapPage(key: ValueKey('map_tab'))),
           Expanded(
             flex: 2,
             child: StreamBuilder<List<Resource>>(
