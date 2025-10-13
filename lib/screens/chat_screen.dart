@@ -5,10 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-
 final OPENAI_API_KEY = dotenv.env['OPENAI_API_KEY'];
-
-
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -74,15 +71,10 @@ class _ChatScreenState extends State<ChatScreen> {
   final ResourceService _resourceService = ResourceService();
   bool _isTyping = false;
 
- 
-
-  
-
   @override
   void initState() {
     super.initState();
     _addWelcomeMessage();
-
   }
 
   void _addWelcomeMessage() {
@@ -160,55 +152,55 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<ChatResponse> _processUserMessage(String message) async {
-  final lowerMessage = message.toLowerCase().trim();
-  final resources = await _resourceService.fetchResourcesOnce();
-  print("Fetched ${resources.length} resources from service"); // DEBUG
+    final lowerMessage = message.toLowerCase().trim();
+    final resources = await _resourceService.fetchResourcesOnce();
+    print("Fetched ${resources.length} resources from service"); // DEBUG
 
-  final Set<Resource> suggestedResources = {};
+    final Set<Resource> suggestedResources = {};
 
-  final Map<String, List<String>> explicitRequests = {
-    'shelter': ['i need shelter'],
-    'food': ['i need food'],
-    'clinic': ['i need medical help', 'i need a doctor', 'i need a clinic'],
-    'pharmacy': ['i need medication', 'i need a pharmacy'],
-    'mental': ['i need therapy', 'i need counseling', 'i need mental help'],
-  };
+    final Map<String, List<String>> explicitRequests = {
+      'shelter': ['i need shelter'],
+      'food': ['i need food'],
+      'clinic': ['i need medical help', 'i need a doctor', 'i need a clinic'],
+      'pharmacy': ['i need medication', 'i need a pharmacy'],
+      'mental': ['i need therapy', 'i need counseling', 'i need mental help'],
+    };
 
-  for (final type in explicitRequests.keys) {
-    for (final phrase in explicitRequests[type]!) {
-      if (lowerMessage.contains(phrase)) {
-        final matched = resources.where((r) => r.type.toLowerCase() == type);
-        print("Matched ${matched.length} resources for $type"); // DEBUG
-        suggestedResources.addAll(matched);
-        break;
+    for (final type in explicitRequests.keys) {
+      for (final phrase in explicitRequests[type]!) {
+        if (lowerMessage.contains(phrase)) {
+          final matched = resources.where((r) => r.type.toLowerCase() == type);
+          print("Matched ${matched.length} resources for $type"); // DEBUG
+          suggestedResources.addAll(matched);
+          break;
+        }
       }
     }
+
+    if (suggestedResources.isEmpty && resources.isNotEmpty) {
+      suggestedResources.addAll(resources.take(3));
+      print("No explicit match, fallback to first 3 resources"); // DEBUG
+    }
+
+    String gptResponse;
+    try {
+      gptResponse = await getGpt5NanoResponse([
+        {"role": "user", "content": message}
+      ]);
+    } catch (e) {
+      gptResponse =
+          "I couldn't fully process your request, but here are some helpful resources:";
+      print('Error fetching GPT response: $e');
+    }
+
+    print(
+        "Returning ${suggestedResources.length} suggested resources"); // DEBUG
+
+    return ChatResponse(
+      text: gptResponse,
+      resources: suggestedResources.toList(),
+    );
   }
-
-  if (suggestedResources.isEmpty && resources.isNotEmpty) {
-    suggestedResources.addAll(resources.take(3));
-    print("No explicit match, fallback to first 3 resources"); // DEBUG
-  }
-
-  String gptResponse;
-  try {
-    gptResponse = await getGpt5NanoResponse([
-      {"role": "user", "content": message}
-    ]);
-  } catch (e) {
-    gptResponse =
-        "I couldn't fully process your request, but here are some helpful resources:";
-    print('Error fetching GPT response: $e');
-  }
-
-  print("Returning ${suggestedResources.length} suggested resources"); // DEBUG
-
-  return ChatResponse(
-    text: gptResponse,
-    resources: suggestedResources.toList(),
-  );
-}
-
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -241,6 +233,24 @@ class _ChatScreenState extends State<ChatScreen> {
             },
           ),
         ),
+        // Quick action buttons
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildQuickButton("I need food", primary),
+                const SizedBox(width: 8),
+                _buildQuickButton("I need shelter", primary),
+                const SizedBox(width: 8),
+                _buildQuickButton("I need medical help", primary),
+                const SizedBox(width: 8),
+                _buildQuickButton("I need mental health support", primary),
+              ],
+            ),
+          ),
+        ),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -250,28 +260,40 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _messageController,
-                  decoration: InputDecoration(
-                    hintText: 'Ask me about resources...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: Colors.grey[300]!),
                   ),
-                  maxLines: null,
-                  onSubmitted: _sendMessage,
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: InputDecoration(
+                      hintText: 'Type a message...',
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      suffixIcon: Icon(
+                        Icons.mic,
+                        color: Colors.grey[400],
+                        size: 20,
+                      ),
+                    ),
+                    maxLines: null,
+                    onSubmitted: _sendMessage,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              CircleAvatar(
-                backgroundColor: primary,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: primary,
+                  borderRadius: BorderRadius.circular(24),
+                ),
                 child: IconButton(
-                  icon: const Icon(Icons.send, color: Colors.white),
+                  icon: const Icon(Icons.send, color: Colors.white, size: 20),
                   onPressed: () => _sendMessage(_messageController.text),
                 ),
               ),
@@ -283,6 +305,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage message, Color primary) {
+    // Check if this is the first welcome message
+    final isWelcomeMessage = !message.isUser &&
+        message.text.contains("Hello! I'm here to help you find resources");
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -299,14 +325,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 CircleAvatar(
                   backgroundColor: primary.withValues(alpha: 0.1),
                   radius: 16,
-                  child: Icon(Icons.support_agent, color: primary, size: 18),
+                  child: Icon(Icons.smart_toy, color: primary, size: 18),
                 ),
               if (!message.isUser) const SizedBox(width: 8),
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: message.isUser ? primary : Colors.grey[100],
+                    color: isWelcomeMessage
+                        ? const Color.fromARGB(255, 255, 167,
+                            167) // Highlighted red for welcome message
+                        : message.isUser
+                            ? primary
+                            : Colors.grey[100],
                     borderRadius: BorderRadius.circular(16).copyWith(
                       bottomRight:
                           message.isUser ? const Radius.circular(4) : null,
@@ -314,21 +345,64 @@ class _ChatScreenState extends State<ChatScreen> {
                           !message.isUser ? const Radius.circular(4) : null,
                     ),
                   ),
-                  child: Text(
-                    message.text,
-                    style: TextStyle(
-                      color: message.isUser ? Colors.white : Colors.black87,
-                      fontSize: 16,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!message.isUser && !isWelcomeMessage)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.smart_toy,
+                              color: primary,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'AI Assistant',
+                              style: TextStyle(
+                                color: primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      if (!message.isUser && !isWelcomeMessage)
+                        const SizedBox(height: 4),
+                      Text(
+                        message.text,
+                        style: TextStyle(
+                          color: message.isUser
+                              ? Colors.white
+                              : isWelcomeMessage
+                                  ? Colors.white
+                                  : Colors.black87,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatTime(message.timestamp),
+                        style: TextStyle(
+                          color: message.isUser
+                              ? Colors.white70
+                              : isWelcomeMessage
+                                  ? Colors.white70
+                                  : Colors.grey[600],
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               if (message.isUser) const SizedBox(width: 8),
               if (message.isUser)
-                const CircleAvatar(
-                  backgroundColor: Colors.blue,
+                CircleAvatar(
+                  backgroundColor: primary.withValues(alpha: 0.8),
                   radius: 16,
-                  child: Icon(Icons.person, color: Colors.white, size: 18),
+                  child:
+                      const Icon(Icons.person, color: Colors.white, size: 18),
                 ),
             ],
           ),
@@ -348,8 +422,24 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  String _formatTime(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+    }
+  }
+
   Widget _buildResourceCard(Resource resource, Color primary) {
-    print("Building resource card: ${resource.name}, ${resource.type}"); // DEBUG
+    print(
+        "Building resource card: ${resource.name}, ${resource.type}"); // DEBUG
     return Card(
       margin: const EdgeInsets.only(bottom: 8, left: 40),
       child: ListTile(
@@ -394,8 +484,8 @@ class _ChatScreenState extends State<ChatScreen> {
           CircleAvatar(
             backgroundColor: const Color(0xFFF48A8A).withValues(alpha: 0.1),
             radius: 16,
-            child: const Icon(Icons.support_agent,
-                color: Color(0xFFF48A8A), size: 18),
+            child:
+                const Icon(Icons.smart_toy, color: Color(0xFFF48A8A), size: 18),
           ),
           const SizedBox(width: 8),
           Container(
@@ -434,6 +524,28 @@ class _ChatScreenState extends State<ChatScreen> {
       decoration: BoxDecoration(
         color: Colors.grey[400],
         borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+
+  Widget _buildQuickButton(String text, Color primary) {
+    return GestureDetector(
+      onTap: () => _sendMessage(text),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: primary.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: primary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
     );
   }

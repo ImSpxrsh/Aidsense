@@ -12,15 +12,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _loading = false;
 
   Future<void> _reset() async {
-    setState(()=>_loading=true);
+    setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: _email.text.trim());
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password reset email sent.')));
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: _email.text.trim());
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password reset email sent.')));
       Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
     } finally {
-      setState(()=>_loading=false);
+      setState(() => _loading = false);
     }
   }
 
@@ -62,7 +65,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              
+
               // Email field
               Container(
                 decoration: BoxDecoration(
@@ -76,14 +79,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   decoration: InputDecoration(
                     labelText: 'Email Address',
                     labelStyle: TextStyle(color: Colors.grey[600]),
-                    prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[500]),
+                    prefixIcon:
+                        Icon(Icons.email_outlined, color: Colors.grey[500]),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
                   ),
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               // Reset button
               SizedBox(
                 width: double.infinity,
@@ -96,26 +101,26 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 0,
                   ),
-                  child: _loading 
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Send Reset Email',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      )
-                    : const Text(
-                        'Send Reset Email',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Help section
               Container(
                 padding: const EdgeInsets.all(16),
@@ -140,14 +145,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ],
                 ),
               ),
-              
+
               const Spacer(),
-              
+
               // Back to login link
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(
+                  child: const Text(
                     'Back to Sign In',
                     style: TextStyle(
                       color: primary,

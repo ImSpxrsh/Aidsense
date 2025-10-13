@@ -22,20 +22,65 @@ class _HomeScreenState extends State<HomeScreen> {
     const primary = Color(0xFFF48A8A);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_tab == 0
-            ? 'Resources'
-            : _tab == 1
-                ? 'Chat'
-                : 'Profile'),
+        leading: _tab == 1
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  setState(() {
+                    _tab = 0; // Go back to home/resources tab
+                  });
+                },
+              )
+            : null,
+        title: _tab == 1
+            ? Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.smart_toy,
+                      color: primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Assistant',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Online',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            : Text(_tab == 0 ? 'Resources' : 'Profile'),
         backgroundColor: primary,
         actions: [
-          IconButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (!mounted) return;
-                Navigator.pushReplacementNamed(context, '/login');
+          if (_tab == 1)
+            IconButton(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onPressed: () {
+                // Add menu functionality if needed
               },
-              icon: const Icon(Icons.logout))
+            ),
         ],
       ),
       body: IndexedStack(
@@ -89,179 +134,182 @@ class _MapAndListTabState extends State<_MapAndListTab> {
     final filters = ['all', 'shelter', 'food', 'pharmacy', 'clinic'];
 
     return Column(
-        children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search resources...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search resources...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
-              onChanged: (value) => setState(() => _searchQuery = value),
+              filled: true,
+              fillColor: Colors.grey[100],
             ),
+            onChanged: (value) => setState(() => _searchQuery = value),
           ),
+        ),
 
-          // Filter chips
-          SizedBox(
-            height: 46,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (c, i) {
-                final f = filters[i];
-                return FilterChip(
-                  selected: _selectedFilter == f,
-                  showCheckmark: false,
-                  label: Text(f[0].toUpperCase() + f.substring(1)),
-                  onSelected: (_) => setState(() => _selectedFilter = f),
-                );
-              },
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemCount: filters.length,
-            ),
+        // Filter chips
+        SizedBox(
+          height: 46,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            scrollDirection: Axis.horizontal,
+            itemBuilder: (c, i) {
+              final f = filters[i];
+              return FilterChip(
+                selected: _selectedFilter == f,
+                showCheckmark: false,
+                label: Text(f[0].toUpperCase() + f.substring(1)),
+                onSelected: (_) => setState(() => _selectedFilter = f),
+              );
+            },
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemCount: filters.length,
           ),
-          Expanded(flex: 2, child: MapPage(key: ValueKey('map_tab'))),
-          Expanded(
-            flex: 2,
-            child: StreamBuilder<List<Resource>>(
-              stream: service.watchResources(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-      
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline,
-                            size: 48, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text('Error loading resources: ${snapshot.error}'),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => setState(() {}),
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-      
-                final allResources = (snapshot.data == null || snapshot.data!.isEmpty)
-    ? mockResources
-    : snapshot.data!;
-      
-                // Filter resources based on search and filter
-                final filteredResources = allResources.where((r) {
-                  final matchesSearch = _searchQuery.isEmpty ||
-                      r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                      r.address
-                          .toLowerCase()
-                          .contains(_searchQuery.toLowerCase()) ||
-                      r.tags.any((tag) =>
-                          tag.toLowerCase().contains(_searchQuery.toLowerCase()));
-      
-                  final matchesFilter =
-                      _selectedFilter == 'all' || r.type.toLowerCase().contains(_selectedFilter.toLowerCase());
-      
-                  return matchesSearch && matchesFilter;
-                }).toList();
-      
-                if (filteredResources.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.search_off,
-                            size: 48, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                            'No resources found${_searchQuery.isNotEmpty ? ' for "$_searchQuery"' : ''}'),
-                        if (_searchQuery.isNotEmpty)
-                          TextButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                            child: const Text('Clear search'),
-                          ),
-                      ],
-                    ),
-                  );
-                }
-      
-                return ListView.separated(
-                  itemCount: filteredResources.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, i) {
-                    final r = filteredResources[i];
-                    return Card(
-                      margin:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: primary.withValues(alpha: 0.1),
-                          child: Icon(
-                            _getResourceIcon(r.type),
-                            color: primary,
-                          ),
-                        ),
-                        title: Text(r.name,
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(r.address),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Chip(
-                                  label: Text(r.type),
-                                  backgroundColor: primary.withValues(alpha: 0.1),
-                                  labelStyle:
-                                      TextStyle(color: primary, fontSize: 12),
-                                ),
-                                const SizedBox(width: 8),
-                                if (r.tags.isNotEmpty)
-                                  Chip(
-                                    label: Text(r.tags.first),
-                                    backgroundColor: Colors.grey[200],
-                                    labelStyle: const TextStyle(fontSize: 12),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () => Navigator.pushNamed(context, '/resource',
-                            arguments: r),
+        ),
+        const Expanded(flex: 2, child: MapPage()),
+        Expanded(
+          flex: 2,
+          child: StreamBuilder<List<Resource>>(
+            stream: service.watchResources(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text('Error loading resources: ${snapshot.error}'),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => setState(() {}),
+                        child: const Text('Retry'),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 );
-              },
-            ),
+              }
+
+              final allResources =
+                  (snapshot.data == null || snapshot.data!.isEmpty)
+                      ? mockResources
+                      : snapshot.data!;
+
+              // Filter resources based on search and filter
+              final filteredResources = allResources.where((r) {
+                final matchesSearch = _searchQuery.isEmpty ||
+                    r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                    r.address
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase()) ||
+                    r.tags.any((tag) =>
+                        tag.toLowerCase().contains(_searchQuery.toLowerCase()));
+
+                final matchesFilter = _selectedFilter == 'all' ||
+                    r.type
+                        .toLowerCase()
+                        .contains(_selectedFilter.toLowerCase());
+
+                return matchesSearch && matchesFilter;
+              }).toList();
+
+              if (filteredResources.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.search_off,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(
+                          'No resources found${_searchQuery.isNotEmpty ? ' for "$_searchQuery"' : ''}'),
+                      if (_searchQuery.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                          child: const Text('Clear search'),
+                        ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                itemCount: filteredResources.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, i) {
+                  final r = filteredResources[i];
+                  return Card(
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: primary.withValues(alpha: 0.1),
+                        child: Icon(
+                          _getResourceIcon(r.type),
+                          color: primary,
+                        ),
+                      ),
+                      title: Text(r.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(r.address),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Chip(
+                                label: Text(r.type),
+                                backgroundColor: primary.withValues(alpha: 0.1),
+                                labelStyle: const TextStyle(
+                                    color: primary, fontSize: 12),
+                              ),
+                              const SizedBox(width: 8),
+                              if (r.tags.isNotEmpty)
+                                Chip(
+                                  label: Text(r.tags.first),
+                                  backgroundColor: Colors.grey[200],
+                                  labelStyle: const TextStyle(fontSize: 12),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => Navigator.pushNamed(context, '/resource',
+                          arguments: r),
+                    ),
+                  );
+                },
+              );
+            },
           ),
-        ],
+        ),
+      ],
     );
   }
 

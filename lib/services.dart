@@ -24,7 +24,7 @@ class ResourceService {
   //   }
   // }
   Future<List<Resource>> fetchResourcesOnce() async {
-    await Future.delayed(Duration(seconds: 1)); // simulate network
+    await Future.delayed(const Duration(seconds: 1)); // simulate network
     return sampleResources;
   }
 }

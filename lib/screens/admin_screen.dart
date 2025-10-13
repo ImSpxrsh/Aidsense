@@ -10,7 +10,8 @@ class AdminScreen extends StatefulWidget {
   State<AdminScreen> createState() => _AdminScreenState();
 }
 
-class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStateMixin {
+class _AdminScreenState extends State<AdminScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ResourceService _resourceService = ResourceService();
 
@@ -29,7 +30,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Portal'),
@@ -63,7 +64,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
 
 class _ResourceListTab extends StatefulWidget {
   final ResourceService resourceService;
-  
+
   const _ResourceListTab({required this.resourceService});
 
   @override
@@ -111,8 +112,10 @@ class _ResourceListTabState extends State<_ResourceListTab> {
                     final filter = filters[index];
                     return FilterChip(
                       selected: _selectedFilter == filter,
-                      label: Text(filter[0].toUpperCase() + filter.substring(1)),
-                      onSelected: (_) => setState(() => _selectedFilter = filter),
+                      label:
+                          Text(filter[0].toUpperCase() + filter.substring(1)),
+                      onSelected: (_) =>
+                          setState(() => _selectedFilter = filter),
                     );
                   },
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -136,7 +139,8 @@ class _ResourceListTabState extends State<_ResourceListTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
                       const SizedBox(height: 16),
                       Text('Error loading resources: ${snapshot.error}'),
                       const SizedBox(height: 16),
@@ -150,15 +154,18 @@ class _ResourceListTabState extends State<_ResourceListTab> {
               }
 
               final allResources = snapshot.data ?? sampleResources;
-              
+
               // Filter resources
               final filteredResources = allResources.where((r) {
-                final matchesSearch = _searchQuery.isEmpty || 
-                  r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  r.address.toLowerCase().contains(_searchQuery.toLowerCase());
-                
-                final matchesFilter = _selectedFilter == 'all' || r.type == _selectedFilter;
-                
+                final matchesSearch = _searchQuery.isEmpty ||
+                    r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                    r.address
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase());
+
+                final matchesFilter =
+                    _selectedFilter == 'all' || r.type == _selectedFilter;
+
                 return matchesSearch && matchesFilter;
               }).toList();
 
@@ -188,7 +195,8 @@ class _ResourceListTabState extends State<_ResourceListTab> {
                         color: primary,
                       ),
                     ),
-                    title: Text(resource.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(resource.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -199,7 +207,8 @@ class _ResourceListTabState extends State<_ResourceListTab> {
                             Chip(
                               label: Text(resource.type),
                               backgroundColor: primary.withValues(alpha: 0.1),
-                              labelStyle: TextStyle(color: primary, fontSize: 12),
+                              labelStyle:
+                                  const TextStyle(color: primary, fontSize: 12),
                             ),
                             if (resource.tags.isNotEmpty) ...[
                               const SizedBox(width: 8),
@@ -216,7 +225,8 @@ class _ResourceListTabState extends State<_ResourceListTab> {
                     trailing: PopupMenuButton(
                       itemBuilder: (context) => [
                         const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        const PopupMenuItem(
+                            value: 'delete', child: Text('Delete')),
                       ],
                       onSelected: (value) {
                         if (value == 'edit') {
@@ -301,7 +311,7 @@ class _ResourceListTabState extends State<_ResourceListTab> {
 
 class _AddResourceTab extends StatefulWidget {
   final ResourceService resourceService;
-  
+
   const _AddResourceTab({required this.resourceService});
 
   @override
@@ -317,7 +327,7 @@ class _AddResourceTabState extends State<_AddResourceTab> {
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   final _tagsController = TextEditingController();
-  
+
   String _selectedType = 'shelter';
   bool _isLoading = false;
 
@@ -338,7 +348,7 @@ class _AddResourceTabState extends State<_AddResourceTab> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Form(
@@ -351,41 +361,41 @@ class _AddResourceTabState extends State<_AddResourceTab> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
-            
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
                 labelText: 'Resource Name',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) => value?.isEmpty == true ? 'Name is required' : null,
+              validator: (value) =>
+                  value?.isEmpty == true ? 'Name is required' : null,
             ),
             const SizedBox(height: 16),
-            
             DropdownButtonFormField<String>(
-              value: _selectedType,
+              initialValue: _selectedType,
               decoration: const InputDecoration(
                 labelText: 'Resource Type',
                 border: OutlineInputBorder(),
               ),
-              items: _resourceTypes.map((type) => DropdownMenuItem(
-                value: type,
-                child: Text(type[0].toUpperCase() + type.substring(1)),
-              )).toList(),
+              items: _resourceTypes
+                  .map((type) => DropdownMenuItem(
+                        value: type,
+                        child: Text(type[0].toUpperCase() + type.substring(1)),
+                      ))
+                  .toList(),
               onChanged: (value) => setState(() => _selectedType = value!),
             ),
             const SizedBox(height: 16),
-            
             TextFormField(
               controller: _addressController,
               decoration: const InputDecoration(
                 labelText: 'Address',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) => value?.isEmpty == true ? 'Address is required' : null,
+              validator: (value) =>
+                  value?.isEmpty == true ? 'Address is required' : null,
             ),
             const SizedBox(height: 16),
-            
             Row(
               children: [
                 Expanded(
@@ -395,8 +405,10 @@ class _AddResourceTabState extends State<_AddResourceTab> {
                       labelText: 'Latitude',
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    validator: (value) => value?.isEmpty == true ? 'Latitude is required' : null,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) =>
+                        value?.isEmpty == true ? 'Latitude is required' : null,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -407,14 +419,15 @@ class _AddResourceTabState extends State<_AddResourceTab> {
                       labelText: 'Longitude',
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    validator: (value) => value?.isEmpty == true ? 'Longitude is required' : null,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) =>
+                        value?.isEmpty == true ? 'Longitude is required' : null,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            
             TextFormField(
               controller: _phoneController,
               decoration: const InputDecoration(
@@ -424,7 +437,6 @@ class _AddResourceTabState extends State<_AddResourceTab> {
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 16),
-            
             TextFormField(
               controller: _websiteController,
               decoration: const InputDecoration(
@@ -434,7 +446,6 @@ class _AddResourceTabState extends State<_AddResourceTab> {
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),
-            
             TextFormField(
               controller: _tagsController,
               decoration: const InputDecoration(
@@ -444,7 +455,6 @@ class _AddResourceTabState extends State<_AddResourceTab> {
               ),
             ),
             const SizedBox(height: 32),
-            
             ElevatedButton(
               onPressed: _isLoading ? null : _addResource,
               style: ElevatedButton.styleFrom(
@@ -452,8 +462,8 @@ class _AddResourceTabState extends State<_AddResourceTab> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: _isLoading
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text('Add Resource', style: TextStyle(fontSize: 16)),
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Add Resource', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
@@ -486,7 +496,9 @@ class _AddResourceTabState extends State<_AddResourceTab> {
       );
 
       // TODO: Add resource to Firestore
-      await FirebaseFirestore.instance.collection('resources').add(resource.toMap());
+      await FirebaseFirestore.instance
+          .collection('resources')
+          .add(resource.toMap());
 
       // Clear form
       _formKey.currentState!.reset();
@@ -527,7 +539,7 @@ class _AnalyticsTab extends StatelessWidget {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
-          
+
           // Stats Cards
           GridView.count(
             shrinkWrap: true,
@@ -537,14 +549,17 @@ class _AnalyticsTab extends StatelessWidget {
             mainAxisSpacing: 16,
             childAspectRatio: 1.5,
             children: [
-              _buildStatCard('Total Resources', '42', Icons.location_on, Colors.blue),
-              _buildStatCard('Active Users', '1,234', Icons.people, Colors.green),
+              _buildStatCard(
+                  'Total Resources', '42', Icons.location_on, Colors.blue),
+              _buildStatCard(
+                  'Active Users', '1,234', Icons.people, Colors.green),
               _buildStatCard('Chat Sessions', '567', Icons.chat, Colors.orange),
-              _buildStatCard('Resources Added', '8', Icons.add_circle, Colors.purple),
+              _buildStatCard(
+                  'Resources Added', '8', Icons.add_circle, Colors.purple),
             ],
           ),
           const SizedBox(height: 32),
-          
+
           // Resource Distribution
           Card(
             child: Padding(
@@ -566,7 +581,7 @@ class _AnalyticsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Recent Activity
           Card(
             child: Padding(
@@ -579,9 +594,12 @@ class _AnalyticsTab extends StatelessWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildActivityItem('New resource added: Food Bank NYC', '2 hours ago'),
-                  _buildActivityItem('User requested shelter information', '4 hours ago'),
-                  _buildActivityItem('Resource updated: MediCure Pharmacy', '1 day ago'),
+                  _buildActivityItem(
+                      'New resource added: Food Bank NYC', '2 hours ago'),
+                  _buildActivityItem(
+                      'User requested shelter information', '4 hours ago'),
+                  _buildActivityItem(
+                      'Resource updated: MediCure Pharmacy', '1 day ago'),
                   _buildActivityItem('New user registered', '2 days ago'),
                 ],
               ),
@@ -592,7 +610,8 @@ class _AnalyticsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -618,20 +637,22 @@ class _AnalyticsTab extends StatelessWidget {
 
   Widget _buildResourceTypeRow(String type, int count, int total) {
     final percentage = (count / total * 100).round();
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           SizedBox(
             width: 80,
-            child: Text(type, style: const TextStyle(fontWeight: FontWeight.w500)),
+            child:
+                Text(type, style: const TextStyle(fontWeight: FontWeight.w500)),
           ),
           Expanded(
             child: LinearProgressIndicator(
               value: count / total,
               backgroundColor: Colors.grey[200],
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF48A8A)),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFFF48A8A)),
             ),
           ),
           const SizedBox(width: 12),
@@ -682,9 +703,12 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.resource?.name ?? '');
-    _addressController = TextEditingController(text: widget.resource?.address ?? '');
-    _phoneController = TextEditingController(text: widget.resource?.phone ?? '');
-    _websiteController = TextEditingController(text: widget.resource?.website ?? '');
+    _addressController =
+        TextEditingController(text: widget.resource?.address ?? '');
+    _phoneController =
+        TextEditingController(text: widget.resource?.phone ?? '');
+    _websiteController =
+        TextEditingController(text: widget.resource?.website ?? '');
   }
 
   @override

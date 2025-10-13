@@ -37,11 +37,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   Future<void> _saveProfile() async {
     setState(() => _loading = true);
-    
+
     try {
       // In a real app, you'd save to Firebase/backend here
       await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -96,8 +96,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     Text(
                       'Change Profile Photo',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -225,7 +225,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         actions: [
           TextButton(
             onPressed: _loading ? null : _saveProfile,
-            child: Text(
+            child: const Text(
               'Save',
               style: TextStyle(
                 color: primary,
@@ -242,7 +242,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            
+
             // Profile Picture Section
             Center(
               child: Column(
@@ -299,7 +299,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               ),
             ),
             const SizedBox(height: 40),
-            
+
             // Form Fields
             _buildInputField(
               label: 'Full Name',
@@ -307,7 +307,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               icon: Icons.person_outline,
             ),
             const SizedBox(height: 20),
-            
+
             _buildInputField(
               label: 'Email Address',
               controller: _emailController,
@@ -315,7 +315,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 20),
-            
+
             _buildInputField(
               label: 'Phone Number',
               controller: _phoneController,
@@ -323,7 +323,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 20),
-            
+
             _buildInputField(
               label: 'Zip Code',
               controller: _zipCodeController,
@@ -332,7 +332,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               helpText: 'Used to find nearby resources',
             ),
             const SizedBox(height: 40),
-            
+
             // Save Button
             SizedBox(
               width: double.infinity,
@@ -345,22 +345,22 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   elevation: 0,
                 ),
-                child: _loading 
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
+                child: _loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Save Changes',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    )
-                  : const Text(
-                      'Save Changes',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
               ),
             ),
             const SizedBox(height: 20),
@@ -401,7 +401,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             decoration: InputDecoration(
               prefixIcon: Icon(icon, color: Colors.grey[500]),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             ),
           ),
         ),
@@ -473,12 +474,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ProfileEditScreen()),
+              MaterialPageRoute(
+                  builder: (context) => const ProfileEditScreen()),
             );
           },
         ),
         const Divider(),
-        
+
         // Settings Section
         SwitchListTile(
           value: _pushNotifications,
@@ -513,7 +515,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _saveSettings();
           },
           title: const Text('Offline Mode'),
-          subtitle: Text(_offlineMode ? 'Cache resources locally' : 'Requires internet'),
+          subtitle: Text(
+              _offlineMode ? 'Cache resources locally' : 'Requires internet'),
           secondary: Icon(
             _offlineMode ? Icons.cloud_off : Icons.cloud,
             color: primary,
@@ -561,7 +564,8 @@ class HelpCenterScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
     return Scaffold(
-      appBar: AppBar(title: const Text('Help Center'), backgroundColor: primary),
+      appBar:
+          AppBar(title: const Text('Help Center'), backgroundColor: primary),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -607,7 +611,7 @@ class HelpCenterScreen extends StatelessWidget {
                         label: const Text('Email Us'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: primary,
-                          side: BorderSide(color: primary),
+                          side: const BorderSide(color: primary),
                         ),
                       ),
                     ),
@@ -627,7 +631,8 @@ class HelpCenterScreen extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const TermsOfServiceScreen()),
               );
             },
           ),
@@ -639,7 +644,8 @@ class HelpCenterScreen extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const PrivacyPolicyScreen()),
               );
             },
           ),
@@ -895,7 +901,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     NotificationItem(
       id: '5',
       title: 'Welcome to AidSense!',
-      message: 'Thank you for joining our community. Start exploring resources now.',
+      message:
+          'Thank you for joining our community. Start exploring resources now.',
       time: DateTime.now().subtract(const Duration(days: 2)),
       isRead: true,
       type: NotificationType.welcome,
@@ -906,7 +913,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
     final unreadCount = notifications.where((n) => !n.isRead).length;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Notifications${unreadCount > 0 ? ' ($unreadCount)' : ''}'),
@@ -923,102 +930,107 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: notifications.isEmpty
-        ? const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.notifications_none, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  'No notifications yet',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-                Text(
-                  'We\'ll notify you about new resources and updates',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          )
-        : ListView.builder(
-            itemCount: notifications.length,
-            itemBuilder: (context, index) {
-              final notification = notifications[index];
-              return Dismissible(
-                key: Key(notification.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 16),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                onDismissed: (direction) {
-                  setState(() {
-                    notifications.removeAt(index);
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${notification.title} deleted'),
-                      action: SnackBarAction(
-                        label: 'Undo',
-                        onPressed: () {
-                          setState(() {
-                            notifications.insert(index, notification);
-                          });
-                        },
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  color: notification.isRead ? Colors.white : Colors.blue[50],
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: notification.isRead ? Colors.grey[300] : primary,
-                      child: Icon(
-                        _getNotificationIcon(notification.type),
-                        color: notification.isRead ? Colors.grey[600] : Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      notification.title,
-                      style: TextStyle(
-                        fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(notification.message),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatTime(notification.time),
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    isThreeLine: true,
-                    onTap: () => _handleNotificationTap(notification),
-                    trailing: !notification.isRead
-                      ? Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: primary,
-                            shape: BoxShape.circle,
-                          ),
-                        )
-                      : null,
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.notifications_none, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'No notifications yet',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
-                ),
-              );
-            },
-          ),
+                  Text(
+                    'We\'ll notify you about new resources and updates',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: notifications.length,
+              itemBuilder: (context, index) {
+                final notification = notifications[index];
+                return Dismissible(
+                  key: Key(notification.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 16),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (direction) {
+                    setState(() {
+                      notifications.removeAt(index);
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${notification.title} deleted'),
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () {
+                            setState(() {
+                              notifications.insert(index, notification);
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    color: notification.isRead ? Colors.white : Colors.blue[50],
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor:
+                            notification.isRead ? Colors.grey[300] : primary,
+                        child: Icon(
+                          _getNotificationIcon(notification.type),
+                          color: notification.isRead
+                              ? Colors.grey[600]
+                              : Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        notification.title,
+                        style: TextStyle(
+                          fontWeight: notification.isRead
+                              ? FontWeight.normal
+                              : FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(notification.message),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatTime(notification.time),
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
+                      onTap: () => _handleNotificationTap(notification),
+                      trailing: !notification.isRead
+                          ? Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: primary,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -1038,7 +1050,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-    
+
     if (difference.inMinutes < 60) {
       return '${difference.inMinutes}m ago';
     } else if (difference.inHours < 24) {

@@ -1,7 +1,6 @@
 import 'package:aidsense_app/directions_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import '../models.dart';
@@ -125,8 +124,8 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Directions')),
       body: GoogleMap(
-        initialCameraPosition: CameraPosition(
-            target: widget.markers.first.position, zoom: 14),
+        initialCameraPosition:
+            CameraPosition(target: widget.markers.first.position, zoom: 14),
         markers: widget.markers,
         polylines: widget.polylines,
         onMapCreated: (controller) => _controller = controller,
