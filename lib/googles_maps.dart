@@ -17,6 +17,7 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   GoogleMapController? _mapController;
   final Location _locationController = Location();
+  final Completer<GoogleMapController> _controllerCompleter = Completer();
 
   static const LatLng _userPosition = LatLng(40.7178, -74.0431);
   static const LatLng jerseyCityShelter =
@@ -60,13 +61,7 @@ class _MapPageState extends State<MapPage> {
         icon: BitmapDescriptor.bytes(userIcon),
         position: _userPosition,
         infoWindow: const InfoWindow(title: "Your Position"),
-        onTap: () {
-          _mapController?.animateCamera(
-            CameraUpdate.newCameraPosition(
-              const CameraPosition(target: _userPosition, zoom: 14),
-            ),
-          );
-        },
+        onTap: () => _centerMapOnMarker(_userPosition),
       ),
     );
 
@@ -92,16 +87,9 @@ class _MapPageState extends State<MapPage> {
           icon: BitmapDescriptor.bytes(markIcon),
           position: LatLng(resource.latitude, resource.longitude),
           infoWindow: InfoWindow(title: resource.name),
-          onTap: () {
-            _mapController?.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: LatLng(resource.latitude, resource.longitude),
-                  zoom: 14,
-                ),
-              ),
-            );
-          },
+          onTap: () => _centerMapOnMarker(
+            LatLng(resource.latitude, resource.longitude),
+          ),
         ),
       );
     }
@@ -109,13 +97,20 @@ class _MapPageState extends State<MapPage> {
     setState(() {}); // Refresh map with markers
 
     // Center map on user
-    if (_mapController != null) {
-      _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          const CameraPosition(target: _userPosition, zoom: 14),
-        ),
-      );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _centerMapOnMarker(_userPosition);
+    });
+  }
+
+  Future<void> _centerMapOnMarker(LatLng target) async {
+    if (_mapController == null) {
+      _mapController = await _controllerCompleter.future;
     }
+
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLng(
+          target), // marker is roughly centered in map widget
+    );
   }
 
   @override
@@ -129,6 +124,10 @@ class _MapPageState extends State<MapPage> {
       mapType: MapType.normal,
       onMapCreated: (GoogleMapController controller) {
         _mapController = controller;
+        if (!_controllerCompleter.isCompleted) {
+          _controllerCompleter.complete(controller);
+        }
+
         loadData(); // Ensure markers are loaded
       },
       zoomControlsEnabled: true,

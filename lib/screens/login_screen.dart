@@ -127,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/reset'),
-                  child: Text(
+                  child: const Text(
                     'Forgot Password?',
                     style: TextStyle(
                       color: primary,
@@ -184,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/signup'),
-                      child: Text(
+                      child: const Text(
                         'Sign Up',
                         style: TextStyle(
                           color: primary,

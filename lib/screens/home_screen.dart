@@ -73,6 +73,12 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : Text(_tab == 0 ? 'Resources' : 'Profile'),
         backgroundColor: primary,
+        foregroundColor: Colors.white,
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
         actions: [
           if (_tab == 1)
             IconButton(
@@ -182,7 +188,8 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             itemCount: filters.length,
           ),
         ),
-        const Expanded(flex: 2, child: MapPage()),
+        Expanded(flex: 2, child: MapPage(key: ValueKey("mapPage_${DateTime.now().millisecondsSinceEpoch}"),
+)),
         Expanded(
           flex: 2,
           child: StreamBuilder<List<Resource>>(
@@ -299,7 +306,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                           ),
                         ],
                       ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16,),
                       onTap: () => Navigator.pushNamed(context, '/resource',
                           arguments: r),
                     ),
