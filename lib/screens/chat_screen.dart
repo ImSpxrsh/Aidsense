@@ -6,9 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final OPENAI_API_KEY = dotenv.env['OPENAI_API_KEY'];
+final GOOGLE_PLACES = dotenv.env['MAPS_API_KEY'];
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final Resource? initialResource;
+  const ChatScreen({super.key, this.initialResource});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -32,7 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
     ];
 
     final body = jsonEncode({
-      "model": "gpt-5-nano",
+      "model": "o4-mini",
       "messages": fullMessages,
       "temperature": 1,
       "max_completion_tokens": 1500,
@@ -71,22 +73,31 @@ class _ChatScreenState extends State<ChatScreen> {
   final ResourceService _resourceService = ResourceService();
   bool _isTyping = false;
 
+  void _addWelcomeMessage() {
+    String message;
+    if (widget.initialResource != null) {
+      final r = widget.initialResource!;
+      message = "You are now asking about ${r.name} (${r.type}). "
+          "You can ask me questions like hours, reviews, directions, or details.";
+    } else {
+      message =
+          "Hello! I'm here to help you find resources in your community. You can ask me things like:\n\n• 'I need food tonight'\n• 'Where can I find shelter?'\n• 'I need medical help'\n• 'Show me pharmacies nearby'\n• 'I need mental health support'\n\n**Crisis Support Available 24/7** 🆘\nIf you're in crisis, I can provide immediate helpline numbers and connect you to professional support.\n\nWhat can I help you with today?";
+    }
+
+    _messages.add(ChatMessage(
+      text: message,
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+  }
+
   @override
   void initState() {
     super.initState();
     _addWelcomeMessage();
   }
 
-  void _addWelcomeMessage() {
-    _messages.add(ChatMessage(
-      text:
-          "Hello! I'm here to help you find resources in your community. You can ask me things like:\n\n• 'I need food tonight'\n• 'Where can I find shelter?'\n• 'I need medical help'\n• 'Show me pharmacies nearby'\n• 'I need mental health support'\n\n**Crisis Support Available 24/7** 🆘\nIf you're in crisis, I can provide immediate helpline numbers and connect you to professional support.\n\nWhat can I help you with today?",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ));
-  }
-
-  void _sendMessage(String message) async {
+  void _sendMessage(String message, {bool showResources = true}) async {
     if (message.trim().isEmpty) return;
 
     setState(() {
@@ -108,7 +119,7 @@ class _ChatScreenState extends State<ChatScreen> {
         text: response.text,
         isUser: false,
         timestamp: DateTime.now(),
-        suggestedResources: response.resources,
+        suggestedResources: showResources ? response.resources : null,
       ));
       _isTyping = false;
     });
@@ -182,24 +193,56 @@ class _ChatScreenState extends State<ChatScreen> {
       print("No explicit match, fallback to first 3 resources"); // DEBUG
     }
 
+    List<Map<String, dynamic>> places = [];
+    if (widget.initialResource != null) {
+      final r = widget.initialResource!;
+      final lat = r.latitude; // REPLACE with actual lat if available
+      final lng = r.longitude; // REPLACE with actual lng if available
+      places = await fetchNearbyPlaces(r.name, lat, lng);
+    }
+
+// Build GPT prompt
+    final gptPrompt = """
+User asked: "$message"
+About resource: "${widget.initialResource?.name ?? "general"}"
+Nearby Google Places found:
+${places.map((p) => "- ${p['name']} at ${p['vicinity']}").join("\n")}
+Respond helpfully and specifically about this resource.
+""";
+
     String gptResponse;
     try {
       gptResponse = await getGpt5NanoResponse([
-        {"role": "user", "content": message}
+        {"role": "user", "content": gptPrompt}
       ]);
     } catch (e) {
       gptResponse =
           "I couldn't fully process your request, but here are some helpful resources:";
-      print('Error fetching GPT response: $e');
     }
 
     print(
         "Returning ${suggestedResources.length} suggested resources"); // DEBUG
+    // Google Places + GPT integration
 
     return ChatResponse(
       text: gptResponse,
       resources: suggestedResources.toList(),
     );
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNearbyPlaces(
+      String query, double lat, double lng) async {
+    final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=$lat,$lng&radius=5000&keyword=${Uri.encodeComponent(query)}&key=$GOOGLE_PLACES');
+
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['results'] ?? []);
+    } else {
+      print('Google Places API error: ${response.statusCode}');
+      return [];
+    }
   }
 
   void _scrollToBottom() {
@@ -218,89 +261,96 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.all(16),
-            itemCount: _messages.length + (_isTyping ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == _messages.length) {
-                return _buildTypingIndicator();
-              }
-              return _buildMessageBubble(_messages[index], primary);
-            },
-          ),
-        ),
-        // Quick action buttons
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildQuickButton("I need food", primary),
-                const SizedBox(width: 8),
-                _buildQuickButton("I need shelter", primary),
-                const SizedBox(width: 8),
-                _buildQuickButton("I need medical help", primary),
-                const SizedBox(width: 8),
-                _buildQuickButton("I need mental health support", primary),
-              ],
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: _messages.length + (_isTyping ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == _messages.length) {
+                    return _buildTypingIndicator();
+                  }
+                  return _buildMessageBubble(_messages[index], primary);
+                },
+              ),
             ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            border: Border(top: BorderSide(color: Colors.grey[200]!)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      suffixIcon: Icon(
-                        Icons.mic,
-                        color: Colors.grey[400],
-                        size: 20,
+            // Quick action buttons
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildQuickButton("I need food", primary),
+                    const SizedBox(width: 8),
+                    _buildQuickButton("I need shelter", primary),
+                    const SizedBox(width: 8),
+                    _buildQuickButton("I need medical help", primary),
+                    const SizedBox(width: 8),
+                    _buildQuickButton("I need mental health support", primary),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                border: Border(top: BorderSide(color: Colors.grey[200]!)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText: 'Type a message...',
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          suffixIcon: Icon(
+                            Icons.mic,
+                            color: Colors.grey[400],
+                            size: 20,
+                          ),
+                        ),
+                        maxLines: null,
+                        onSubmitted: _sendMessage,
                       ),
                     ),
-                    maxLines: null,
-                    onSubmitted: _sendMessage,
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: primary,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: IconButton(
+                      icon:
+                          const Icon(Icons.send, color: Colors.white, size: 20),
+                      onPressed: () => _sendMessage(_messageController.text,
+                          showResources: false),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                  onPressed: () => _sendMessage(_messageController.text),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

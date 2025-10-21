@@ -76,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.white,
         titleTextStyle: const TextStyle(
           color: Colors.white,
-          fontSize: 18,
+          fontSize: 24,
           fontWeight: FontWeight.w600,
         ),
         actions: [
@@ -188,8 +188,8 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             itemCount: filters.length,
           ),
         ),
-        Expanded(flex: 2, child: MapPage(key: ValueKey("mapPage_${DateTime.now().millisecondsSinceEpoch}"),
-)),
+        Expanded(flex: 2, child: MapPage()),
+
         Expanded(
           flex: 2,
           child: StreamBuilder<List<Resource>>(

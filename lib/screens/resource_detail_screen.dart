@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'polyline_service.dart';
+import 'chat_screen.dart';
+import '../models.dart';
+
 
 class ResourceDetailScreen extends StatelessWidget {
   const ResourceDetailScreen({super.key});
@@ -10,8 +13,17 @@ class ResourceDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final Resource r = ModalRoute.of(context)!.settings.arguments as Resource;
     const primary = Color(0xFFF48A8A);
+
     return Scaffold(
-      appBar: AppBar(title: Text(r.name), backgroundColor: primary),
+      appBar: AppBar(
+        title: Text(r.name),
+        backgroundColor: primary,
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -24,8 +36,7 @@ class ResourceDetailScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: GoogleMap(
                 initialCameraPosition: CameraPosition(
-                  target: LatLng(
-                      r.latitude, r.longitude), // use your resource's lat/lng
+                  target: LatLng(r.latitude, r.longitude),
                   zoom: 15,
                 ),
                 markers: {
@@ -44,90 +55,117 @@ class ResourceDetailScreen extends StatelessWidget {
           Text(r.address, style: const TextStyle(fontSize: 14)),
           const SizedBox(height: 8),
           Wrap(
-              spacing: 8,
-              children: r.tags.map((t) => Chip(label: Text(t))).toList()),
+            spacing: 8,
+            children: r.tags.map((t) => Chip(label: Text(t))).toList(),
+          ),
           const SizedBox(height: 16),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final polylineService = PolylineService();
-                  final markers = await polylineService.createMarkers(
-                    r
-                  );
-                  final polylines = await polylineService
-                      .getPolyline(r);
- 
-                  // Navigate to a new map screen with polyline
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DirectionsMapScreen(
-                        markers: markers,
-                        polylines: polylines,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.directions),
-                label: const Text('Directions'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Opening phone app...')),
-                  );
-                },
-                icon: const Icon(Icons.phone),
-                label: const Text('Call'),
-              ),
-            ),
-          ]),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Opening website...')),
-                  );
-                },
-                icon: const Icon(Icons.language),
-                label: const Text('Website'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: AnimatedBuilder(
-                animation: FavoritesService(),
-                builder: (context, _) {
-                  final added = FavoritesService().isFavorite(r);
-                  return ElevatedButton.icon(
-                    onPressed: () {
-                      final favoritesService = FavoritesService();
-                      FavoritesService().toggleFavorite(r);
-                      final nowAdded = favoritesService.isFavorite(r);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(nowAdded
-                              ? 'Added to favorites!'
-                              : 'Removed from favorites!'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final polylineService = PolylineService();
+                    final markers = await polylineService.createMarkers(r);
+                    final polylines = await polylineService.getPolyline(r);
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DirectionsMapScreen(
+                          markers: markers,
+                          polylines: polylines,
                         ),
-                      );
-                    },
-                    icon: Icon(
-                      Icons.favorite,
-                      color: added ? Colors.red : Colors.white,
-                    ),
-                    label: const Text('Favorite'),
-                  );
-                },
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.directions),
+                  label: const Text('Directions'),
+                ),
               ),
-            ),
-          ]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Opening phone app...')),
+                    );
+                  },
+                  icon: const Icon(Icons.phone),
+                  label: const Text('Call'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Opening website...')),
+                    );
+                  },
+                  icon: const Icon(Icons.language),
+                  label: const Text('Website'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: AnimatedBuilder(
+                  animation: FavoritesService(),
+                  builder: (context, _) {
+                    final added = FavoritesService().isFavorite(r);
+                    return ElevatedButton.icon(
+                      onPressed: () {
+                        final favoritesService = FavoritesService();
+                        favoritesService.toggleFavorite(r);
+                        final nowAdded = favoritesService.isFavorite(r);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(nowAdded
+                                ? 'Added to favorites!'
+                                : 'Removed from favorites!'),
+                          ),
+                        );
+                      },
+                      icon: Icon(
+                        Icons.favorite,
+                        color: added ? Colors.red : Colors.white,
+                      ),
+                      label: const Text('Favorite'),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(initialResource: r),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline,
+                      color: Colors.white),
+                  label: const Text(
+                    'Ask AI',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -152,6 +190,6 @@ class FavoritesService extends ChangeNotifier {
     } else {
       _favorites.add(r);
     }
-    notifyListeners(); 
+    notifyListeners();
   }
 }

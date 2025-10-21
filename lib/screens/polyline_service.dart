@@ -4,6 +4,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import '../models.dart';
+import 'dart:async';
+
 
 class PolylineService {
   static const LatLng _userPosition = LatLng(40.7178, -74.0431);
@@ -22,16 +24,18 @@ class PolylineService {
         (await fi.image.toByteData(format: ui.ImageByteFormat.png))!
             .buffer
             .asUint8List();
-    return BitmapDescriptor.fromBytes(bytes);
+    return BitmapDescriptor.bytes(bytes);
   }
 
   /// Create custom markers for user and resource
   Future<Set<Marker>> createMarkers(Resource resource) async {
     final userIcon =
-        await _getMarkerIcon('assets/images/person_marker.png', 150);
+        await _getMarkerIcon('assets/images/person_marker.png', 60);
+    
+    final type = resource.type.toLowerCase().trim();
 
     String iconPath;
-    switch (resource.type) {
+    switch (type) {
       case 'shelter':
         iconPath = 'assets/images/shelter_marker1.png';
         break;
@@ -46,7 +50,7 @@ class PolylineService {
         iconPath = 'assets/images/shelter_marker1.png';
     }
 
-    final destIcon = await _getMarkerIcon(iconPath, 150);
+    final destIcon = await _getMarkerIcon(iconPath, 50);
 
     return {
       Marker(
@@ -95,40 +99,32 @@ class DirectionsMapScreen extends StatefulWidget {
 }
 
 class _DirectionsMapScreenState extends State<DirectionsMapScreen> {
-  GoogleMapController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fitBounds());
-  }
-
-  void _fitBounds() {
-    if (_controller == null || widget.markers.isEmpty) return;
-
-    final lats = widget.markers.map((m) => m.position.latitude).toList();
-    final lngs = widget.markers.map((m) => m.position.longitude).toList();
-
-    final bounds = LatLngBounds(
-      southwest: LatLng(lats.reduce((a, b) => a < b ? a : b),
-          lngs.reduce((a, b) => a < b ? a : b)),
-      northeast: LatLng(lats.reduce((a, b) => a > b ? a : b),
-          lngs.reduce((a, b) => a > b ? a : b)),
-    );
-
-    _controller!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
-  }
+  GoogleMapController? _mapController;
+  final Completer<GoogleMapController> _controllerCompleter = Completer();
+  Set<Marker> _displayMarkers = {};
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Directions')),
       body: GoogleMap(
-        initialCameraPosition:
-            CameraPosition(target: widget.markers.first.position, zoom: 14),
-        markers: widget.markers,
+        initialCameraPosition: const CameraPosition(
+          target: LatLng(40.7178, -74.0431),
+          zoom: 14,
+        ),
         polylines: widget.polylines,
-        onMapCreated: (controller) => _controller = controller,
+        markers: _displayMarkers,
+        onMapCreated: (controller) async {
+          _mapController = controller;
+          if (!_controllerCompleter.isCompleted) {
+            _controllerCompleter.complete(controller);
+          }
+
+          // Wait briefly to ensure map is fully initialized, then show markers
+          await Future.delayed(const Duration(milliseconds: 300));
+          setState(() {
+            _displayMarkers = widget.markers;
+          });
+        },
       ),
     );
   }
