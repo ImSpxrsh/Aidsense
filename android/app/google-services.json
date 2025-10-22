@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "758673088506",
+    "project_id": "aidsense-3dab7",
+    "storage_bucket": "aidsense-3dab7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:758673088506:android:643fb7dce9df9259b84e43",
+        "android_client_info": {
+          "package_name": "com.aidsense.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "758673088506-android.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aidsense.app",
+            "certificate_hash": "sha1"
+          }
+        },
+        {
+          "client_id": "758673088506-android.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVkNG8W8KMg3nxk2kIi43psMJ9rvj7SFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "758673088506-android.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

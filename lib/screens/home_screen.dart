@@ -1,7 +1,7 @@
 import 'package:aidsense_app/googles_maps.dart';
 import 'package:aidsense_app/mock_resources.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../user_data.dart';
 import '../services.dart';
 import '../models.dart';
 import 'chat_screen.dart';
@@ -15,10 +15,25 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   final service = ResourceService();
+  String userName = 'User';
+  String userEmail = 'user@example.com';
+  final GlobalKey<_ProfileTabState> _profileKey = GlobalKey<_ProfileTabState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      userName = UserData.fullName;
+      userEmail = UserData.email;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
     const primary = Color(0xFFF48A8A);
     return Scaffold(
       appBar: AppBar(
@@ -32,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               )
             : null,
+        centerTitle: true,
         title: _tab == 1
             ? Row(
                 children: [
@@ -87,6 +103,91 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Add menu functionality if needed
               },
             ),
+          IconButton(
+              onPressed: () async {
+                // Show confirmation dialog
+                final bool? shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      contentPadding: const EdgeInsets.all(24),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Are you sure you want to log out?',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2D3748),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                        color: Color(0xFFF56565)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                  ),
+                                  child: const Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: Color(0xFF2D3748),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFF56565),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                  ),
+                                  child: const Text(
+                                    'Yes, Logout',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+
+                if (shouldLogout == true) {
+                  UserData.clearUser();
+                  if (!mounted) return;
+                  Navigator.pushReplacementNamed(context, '/');
+                }
+              },
+              icon: const Icon(Icons.logout))
         ],
       ),
       body: IndexedStack(
@@ -94,7 +195,16 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _MapAndListTab(service: service),
           const ChatScreen(),
-          _ProfileTab(userEmail: user?.email ?? 'User'),
+          _ProfileTab(
+              key: _profileKey,
+              userName: userName,
+              userEmail: userEmail,
+              onProfileUpdated: () {
+                setState(() {
+                  userName = UserData.fullName;
+                  userEmail = UserData.email;
+                });
+              }),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -306,7 +416,10 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                           ),
                         ],
                       ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16,),
+                      trailing: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                      ),
                       onTap: () => Navigator.pushNamed(context, '/resource',
                           arguments: r),
                     ),
@@ -336,54 +449,389 @@ class _MapAndListTabState extends State<_MapAndListTab> {
   }
 }
 
-class _ProfileTab extends StatelessWidget {
+class _ProfileTab extends StatefulWidget {
+  final String userName;
   final String userEmail;
-  const _ProfileTab({required this.userEmail});
+  final VoidCallback? onProfileUpdated;
+  const _ProfileTab(
+      {super.key,
+      required this.userName,
+      required this.userEmail,
+      this.onProfileUpdated});
+
+  @override
+  State<_ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<_ProfileTab> {
+  String get userName => UserData.fullName;
+  String get userEmail => UserData.email;
+  String get userMobile => UserData.mobile;
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        ListTile(
-          leading: const CircleAvatar(radius: 26, child: Icon(Icons.person)),
-          title: Text(userEmail),
-          subtitle: const Text('Community Member'),
+    return Container(
+      color: primary,
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          // Profile Picture Section
+          Stack(
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3), width: 3),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 60,
+                  color: Colors.white,
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFB6C1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // User Information
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  userName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  userMobile.isNotEmpty ? userMobile : 'No phone number',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  userEmail,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+          // Profile Options
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+              ),
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  _buildProfileOption(Icons.favorite_border, 'Favorites', () {
+                    Navigator.pushNamed(context, '/favorites');
+                  }),
+                  _buildProfileOption(Icons.settings, 'Settings', () {
+                    Navigator.pushNamed(context, '/settings');
+                  }),
+                  _buildProfileOption(Icons.help_outline, 'Help & Support', () {
+                    Navigator.pushNamed(context, '/help');
+                  }),
+                  _buildProfileOption(
+                      Icons.privacy_tip_outlined, 'Privacy Policy', () {
+                    Navigator.pushNamed(context, '/privacy');
+                  }),
+                  _buildProfileOption(Icons.info_outline, 'About', () {
+                    Navigator.pushNamed(context, '/about');
+                  }),
+                  const SizedBox(height: 20),
+                  // Update Profile Button
+                  Container(
+                    width: double.infinity,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFFFB6C1), // Light pink
+                          Color(0xFFFFA07A), // Salmon pink
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => _showUpdateProfileDialog(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
+                      child: const Text(
+                        'Update Profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileOption(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFFF48A8A)),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
         ),
-        const SizedBox(height: 8),
-        Card(
-            child: Column(children: [
-          ListTile(
-            leading: const Icon(Icons.favorite_border),
-            title: const Text('Favorites'),
-            onTap: () => Navigator.pushNamed(context, '/favorites'),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-            onTap: () => Navigator.pushNamed(context, '/settings'),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.help_outline),
-            title: const Text('Help Center'),
-            onTap: () => Navigator.pushNamed(context, '/help'),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.notifications_outlined),
-            title: const Text('Notifications'),
-            onTap: () => Navigator.pushNamed(context, '/notifications'),
-          ),
-        ])),
-        const SizedBox(height: 12),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: primary),
-          onPressed: () {},
-          child: const Text('Update Profile'),
-        )
-      ],
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
+    );
+  }
+
+  void _showUpdateProfileDialog(BuildContext context) {
+    final nameController = TextEditingController(text: UserData.fullName);
+    final phoneController = TextEditingController(text: UserData.mobile);
+    final emailController = TextEditingController(text: UserData.email);
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                'Update Profile',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3748),
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Name Field
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Full Name',
+                          style: TextStyle(
+                            color: Color(0xFF2D3748),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: nameController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your full name',
+                            hintStyle:
+                                const TextStyle(color: Color(0xFFE53E3E)),
+                            filled: true,
+                            fillColor: const Color(0xFFE2E8F0),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Phone Field
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Phone Number',
+                          style: TextStyle(
+                            color: Color(0xFF2D3748),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: phoneController,
+                          decoration: InputDecoration(
+                            hintText: 'XXX-XXX-XXXX',
+                            hintStyle:
+                                const TextStyle(color: Color(0xFFE53E3E)),
+                            filled: true,
+                            fillColor: const Color(0xFFE2E8F0),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Email Field
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Email',
+                          style: TextStyle(
+                            color: Color(0xFF2D3748),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: emailController,
+                          decoration: InputDecoration(
+                            hintText: 'example@example.com',
+                            hintStyle:
+                                const TextStyle(color: Color(0xFFE53E3E)),
+                            filled: true,
+                            fillColor: const Color(0xFFE2E8F0),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isLoading ? null : () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Color(0xFF718096),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+
+                          // Update user data
+                          UserData.updateProfile(
+                            fullName: nameController.text.trim(),
+                            mobile: phoneController.text.trim(),
+                            email: emailController.text.trim(),
+                          );
+
+                          // Simulate API call delay
+                          await Future.delayed(const Duration(seconds: 1));
+
+                          setState(() => isLoading = false);
+
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            // Call the callback to refresh the parent
+                            widget.onProfileUpdated?.call();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Profile updated successfully!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF56565),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

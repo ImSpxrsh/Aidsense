@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../user_data.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -19,19 +19,17 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup() async {
     setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // Save user data using simple in-memory storage
+      UserData.saveUser(
+        fullName: _fullName.text.trim(),
         email: _email.text.trim(),
-        password: _pass.text.trim(),
+        mobile: _mobileNumber.text.trim(),
+        dateOfBirth: _dateOfBirth.text.trim(),
       );
-      // After sign up, send email verification optionally
-      final user = FirebaseAuth.instance.currentUser;
-      await user?.sendEmailVerification();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Account created. Verification email sent.')));
-      Navigator.pushReplacementNamed(context, '/login');
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account created successfully!')));
+      Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -127,10 +125,12 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         centerTitle: true,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: ListView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Full Name Field
             _buildInputField(
               label: 'Full name',
               controller: _fullName,
@@ -138,9 +138,11 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
 
-            PasswordField(controller: _pass),
+            // Password Field
+            _buildPasswordField(),
             const SizedBox(height: 20),
 
+            // Email Field
             _buildInputField(
               label: 'Email',
               controller: _email,
@@ -148,6 +150,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
 
+            // Mobile Number Field
             _buildInputField(
               label: 'Mobile Number',
               controller: _mobileNumber,
@@ -155,90 +158,98 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
 
+            // Date of Birth Field
             _buildInputField(
               label: 'Date Of Birth',
               controller: _dateOfBirth,
               placeholder: 'DD / MM / YYYY',
             ),
             const SizedBox(height: 24),
-            // Sign Up Button
-            StatefulBuilder(
-              builder: (context, setLocalState) {
-                return Container(
-                  width: double.infinity,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFB6C1), Color(0xFFFFA07A)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _loading
-                        ? null
-                        : () async {
-                            setLocalState(() => _loading = true);
-                            await _signup();
-                            setLocalState(() => _loading = false);
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    child: _loading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                );
-              },
-            ),
 
-            const SizedBox(height: 24),
-
-            // Social Sign Up
-            const Center(
-              child: Text(
-                'or sign up with',
-                style: TextStyle(color: Color(0xFF718096), fontSize: 14),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Social Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // Legal Text
+            Wrap(
               children: [
-                _buildSocialButton('G', () {}),
-                const SizedBox(width: 16),
-                _buildSocialButton('f', () {}),
-                const SizedBox(width: 16),
-                _buildSocialButton('', () {}, icon: Icons.fingerprint),
+                const Text(
+                  'By continuing, you agree to ',
+                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
+                ),
+                GestureDetector(
+                  onTap: () => _showTermsDialog(context),
+                  child: const Text(
+                    'Terms of Use',
+                    style: TextStyle(
+                      color: primary,
+                      decoration: TextDecoration.underline,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const Text(
+                  ' and ',
+                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
+                ),
+                GestureDetector(
+                  onTap: () => _showPrivacyDialog(context),
+                  child: const Text(
+                    'Privacy Policy.',
+                    style: TextStyle(
+                      color: primary,
+                      decoration: TextDecoration.underline,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+
+            // Sign Up Button
+            Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFFFFB6C1), // Light pink
+                    Color(0xFFFFA07A), // Salmon pink
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: ElevatedButton(
+                onPressed: _loading ? null : _signup,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+                child: _loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Sign Up',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 24),
 
             // Login Link
             Center(
               child: GestureDetector(
                 onTap: () => Navigator.pushReplacementNamed(context, '/login'),
                 child: RichText(
-                  text: TextSpan(
-                    style:
-                        const TextStyle(color: Color(0xFF718096), fontSize: 14),
+                  text: const TextSpan(
+                    style: TextStyle(color: Color(0xFF718096), fontSize: 14),
                     children: [
-                      const TextSpan(text: 'already have on account? '),
+                      TextSpan(text: 'Already have an account? '),
                       TextSpan(
                         text: 'Log in',
                         style: TextStyle(color: primary),
@@ -290,46 +301,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildSocialButton(String text, VoidCallback onTap, {IconData? icon}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFFB6C1),
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: icon != null
-              ? Icon(icon, color: Colors.white, size: 24)
-              : Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-class PasswordField extends StatefulWidget {
-  final TextEditingController controller;
-  const PasswordField({required this.controller, super.key});
-
-  @override
-  State<PasswordField> createState() => _PasswordFieldState();
-}
-
-class _PasswordFieldState extends State<PasswordField> {
-  bool _obscurePassword = true;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildPasswordField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -343,7 +315,7 @@ class _PasswordFieldState extends State<PasswordField> {
         ),
         const SizedBox(height: 8),
         TextField(
-          controller: widget.controller,
+          controller: _pass,
           obscureText: _obscurePassword,
           decoration: InputDecoration(
             hintText: '............',
