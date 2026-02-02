@@ -33,4 +33,4 @@ Aidsense focuses on serving communities in New Jersey's 9th congressional distri
 
 ## 🌐 Learn More ⬆️
 
-👉 [imspxrsh.github.io/Aidsense](https://imspxrsh.github.io/Aidsense)
+👉 [AidSense Website](https://aidsense.sparshroy.com/)
