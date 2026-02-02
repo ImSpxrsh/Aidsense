@@ -3,7 +3,6 @@ import '../models.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'polyline_service.dart';
 import 'chat_screen.dart';
-import '../models.dart';
 
 
 class ResourceDetailScreen extends StatelessWidget {
@@ -16,6 +15,7 @@ class ResourceDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(r.name),
         backgroundColor: primary,
         titleTextStyle: const TextStyle(
@@ -152,7 +152,7 @@ class ResourceDetailScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatScreen(initialResource: r),
+                        builder: (_) => ChatScreen(initialResource: r, showAppBar: true,),
                       ),
                     );
                   },

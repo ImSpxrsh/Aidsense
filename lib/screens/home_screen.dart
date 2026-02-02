@@ -1,22 +1,26 @@
-import 'package:aidsense_app/googles_maps.dart';
-import 'package:aidsense_app/mock_resources.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:location/location.dart';
+
 import '../user_data.dart';
-import '../services.dart';
 import '../models.dart';
 import 'chat_screen.dart';
+import '../google_maps.dart';
+import '../screens/places_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
-  final service = ResourceService();
+
   String userName = 'User';
   String userEmail = 'user@example.com';
+
   final GlobalKey<_ProfileTabState> _profileKey = GlobalKey<_ProfileTabState>();
 
   @override
@@ -25,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserData();
   }
 
-  Future<void> _loadUserData() async {
+  void _loadUserData() {
     setState(() {
       userName = UserData.fullName;
       userEmail = UserData.email;
@@ -35,165 +39,54 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
+
     return Scaffold(
       appBar: AppBar(
         leading: _tab == 1
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    _tab = 0; // Go back to home/resources tab
-                  });
-                },
+                onPressed: () => setState(() => _tab = 0),
               )
             : null,
         centerTitle: true,
         title: _tab == 1
-            ? Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.smart_toy,
-                      color: primary,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'AI Assistant',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'Online',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              )
+            ? const Text('AI Assistant')
             : Text(_tab == 0 ? 'Resources' : 'Profile'),
         backgroundColor: primary,
         foregroundColor: Colors.white,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-        ),
         actions: [
-          if (_tab == 1)
-            IconButton(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
-              onPressed: () {
-                // Add menu functionality if needed
-              },
-            ),
           IconButton(
-              onPressed: () async {
-                // Show confirmation dialog
-                final bool? shouldLogout = await showDialog<bool>(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      contentPadding: const EdgeInsets.all(24),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Are you sure you want to log out?',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF2D3748),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(
-                                        color: Color(0xFFF56565)),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                  ),
-                                  child: const Text(
-                                    'Cancel',
-                                    style: TextStyle(
-                                      color: Color(0xFF2D3748),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF56565),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                  ),
-                                  child: const Text(
-                                    'Yes, Logout',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              final shouldLogout = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Log out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Logout'),
+                    ),
+                  ],
+                ),
+              );
 
-                if (shouldLogout == true) {
-                  UserData.clearUser();
-                  if (!mounted) return;
-                  Navigator.pushReplacementNamed(context, '/');
-                }
-              },
-              icon: const Icon(Icons.logout))
+              if (shouldLogout == true && mounted) {
+                UserData.clearUser();
+                Navigator.pushReplacementNamed(context, '/');
+              }
+            },
+          ),
         ],
       ),
       body: IndexedStack(
         index: _tab,
         children: [
-          _MapAndListTab(service: service),
+          const _MapAndListTab(),
           const ChatScreen(),
           _ProfileTab(
               key: _profileKey,
@@ -211,47 +104,139 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
+          NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Home'),
           NavigationDestination(
-              icon: Icon(Icons.map_outlined),
-              selectedIcon: Icon(Icons.map),
-              label: 'Home'),
+              icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
           NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline),
-              selectedIcon: Icon(Icons.chat_bubble),
-              label: 'Chat'),
-          NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profile'),
+              icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
       ),
     );
   }
 }
 
+/* ---------------- MAP + LIST TAB ---------------- */
+
 class _MapAndListTab extends StatefulWidget {
-  final ResourceService service;
-  const _MapAndListTab({required this.service});
+  const _MapAndListTab();
 
   @override
   State<_MapAndListTab> createState() => _MapAndListTabState();
 }
 
 class _MapAndListTabState extends State<_MapAndListTab> {
+  List<Resource> _places = [];
+  bool _loading = true;
   String _selectedFilter = 'all';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  ResourceService get service => widget.service;
+  @override
+  void initState() {
+    super.initState();
+    _loadNearbyPlaces();
+  }
+
+  Future<LatLng?> _getUserLocation() async {
+    final location = Location();
+    bool enabled = await location.serviceEnabled();
+    if (!enabled) {
+      enabled = await location.requestService();
+      if (!enabled) return null;
+    }
+    PermissionStatus perm = await location.hasPermission();
+    if (perm == PermissionStatus.denied) {
+      perm = await location.requestPermission();
+      if (perm != PermissionStatus.granted) return null;
+    }
+    final loc = await location.getLocation();
+    if (loc.latitude == null || loc.longitude == null) return null;
+    return LatLng(loc.latitude!, loc.longitude!);
+  }
+
+  Future<void> _loadNearbyPlaces() async {
+    setState(() => _loading = true);
+    final pos = await _getUserLocation();
+    if (pos == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    final List<Resource> all = [];
+    const categories = ['shelter', 'food', 'clinic', 'pharmacy'];
+    final keywordMap = {
+      'food': 'food bank soup kitchen',
+      'shelter': 'homeless shelter',
+      'clinic': 'free clinic community health',
+      'pharmacy': 'pharmacy'
+    };
+    for (final c in categories) {
+      final places = await PlacesService.fetchNearby(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        keyword: keywordMap[c]!,
+      );
+      all.addAll(
+        places.map((p) {
+          // Tag logic
+          List<String> tags;
+          switch (c) {
+            case 'shelter':
+              tags = ['Housing', 'Assistance'];
+              break;
+            case 'food':
+              tags = ['Groceries', 'Meals'];
+              break;
+            case 'clinic':
+              tags = ['Medical', 'Care'];
+              break;
+            case 'pharmacy':
+              tags = ['Medicine', 'Supplies'];
+              break;
+            default:
+              tags = [c[0].toUpperCase() + c.substring(1)];
+          }
+          return Resource(
+            id: p.placeId,
+            name: p.name,
+            type: c,
+            address: p.address,
+            latitude: p.lat,
+            longitude: p.lng,
+            phone: p.phone,
+            website: p.website,
+            tags: tags,
+          );
+        }),
+      );
+    }
+    if (all.isEmpty) {
+      debugPrint('No resources found from Google Places.');
+    }
+    setState(() {
+      _places = all;
+      _loading = false;
+    });
+  }
+
+  List<Resource> get _filteredPlaces {
+    return _places.where((r) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          r.address.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          r.tags.any(
+              (tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()));
+      final matchesFilter =
+          _selectedFilter == 'all' || r.type == _selectedFilter;
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
     final filters = ['all', 'shelter', 'food', 'pharmacy', 'clinic'];
-
     return Column(
       children: [
-        // Search bar
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
           child: TextField(
@@ -278,8 +263,6 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             onChanged: (value) => setState(() => _searchQuery = value),
           ),
         ),
-
-        // Filter chips
         SizedBox(
           height: 46,
           child: ListView.separated(
@@ -298,136 +281,88 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             itemCount: filters.length,
           ),
         ),
-        Expanded(flex: 2, child: MapPage()),
-
         Expanded(
           flex: 2,
-          child: StreamBuilder<List<Resource>>(
-            stream: service.watchResources(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          size: 48, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text('Error loading resources: ${snapshot.error}'),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => setState(() {}),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              final allResources =
-                  (snapshot.data == null || snapshot.data!.isEmpty)
-                      ? mockResources
-                      : snapshot.data!;
-
-              // Filter resources based on search and filter
-              final filteredResources = allResources.where((r) {
-                final matchesSearch = _searchQuery.isEmpty ||
-                    r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                    r.address
-                        .toLowerCase()
-                        .contains(_searchQuery.toLowerCase()) ||
-                    r.tags.any((tag) =>
-                        tag.toLowerCase().contains(_searchQuery.toLowerCase()));
-
-                final matchesFilter = _selectedFilter == 'all' ||
-                    r.type
-                        .toLowerCase()
-                        .contains(_selectedFilter.toLowerCase());
-
-                return matchesSearch && matchesFilter;
-              }).toList();
-
-              if (filteredResources.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.search_off,
-                          size: 48, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                          'No resources found${_searchQuery.isNotEmpty ? ' for "$_searchQuery"' : ''}'),
-                      if (_searchQuery.isNotEmpty)
-                        TextButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                          child: const Text('Clear search'),
-                        ),
-                    ],
-                  ),
-                );
-              }
-
-              return ListView.separated(
-                itemCount: filteredResources.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, i) {
-                  final r = filteredResources[i];
-                  return Card(
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: primary.withValues(alpha: 0.1),
-                        child: Icon(
-                          _getResourceIcon(r.type),
-                          color: primary,
-                        ),
-                      ),
-                      title: Text(r.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          child: MapPage(
+            resources: _filteredPlaces,
+            searchQuery: _searchQuery,
+            selectedFilter: _selectedFilter,
+            initialPosition: _places.isNotEmpty
+                ? LatLng(_places.first.latitude, _places.first.longitude)
+                : null,
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _filteredPlaces.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(r.address),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Chip(
-                                label: Text(r.type),
-                                backgroundColor: primary.withValues(alpha: 0.1),
-                                labelStyle: const TextStyle(
-                                    color: primary, fontSize: 12),
-                              ),
-                              const SizedBox(width: 8),
-                              if (r.tags.isNotEmpty)
-                                Chip(
-                                  label: Text(r.tags.first),
-                                  backgroundColor: Colors.grey[200],
-                                  labelStyle: const TextStyle(fontSize: 12),
-                                ),
-                            ],
-                          ),
+                          const Icon(Icons.search_off,
+                              size: 48, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          Text(
+                              'No resources found${_searchQuery.isNotEmpty ? ' for "$_searchQuery"' : ''}'),
+                          if (_searchQuery.isNotEmpty)
+                            TextButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                              child: const Text('Clear search'),
+                            ),
                         ],
                       ),
-                      trailing: const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                      ),
-                      onTap: () => Navigator.pushNamed(context, '/resource',
-                          arguments: r),
+                    )
+                  : ListView.separated(
+                      itemCount: _filteredPlaces.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final r = _filteredPlaces[i];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: primary.withOpacity(0.1),
+                              child: Icon(_getResourceIcon(r.type),
+                                  color: primary),
+                            ),
+                            title: Text(r.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(r.address.isNotEmpty
+                                    ? r.address
+                                    : 'No address available'),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  children: r.tags
+                                      .map((tag) => Chip(
+                                            label: Text(tag),
+                                            backgroundColor: Colors.grey[200],
+                                            labelStyle:
+                                                const TextStyle(fontSize: 12),
+                                          ))
+                                      .toList(),
+                                ),
+                              ],
+                            ),
+                            trailing:
+                                const Icon(Icons.arrow_forward_ios, size: 16),
+                            onTap: () => Navigator.pushNamed(
+                                context, '/resource',
+                                arguments: r),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              );
-            },
-          ),
         ),
       ],
     );
@@ -449,15 +384,18 @@ class _MapAndListTabState extends State<_MapAndListTab> {
   }
 }
 
+/* ---------------- PROFILE TAB ---------------- */
+
 class _ProfileTab extends StatefulWidget {
   final String userName;
   final String userEmail;
-  final VoidCallback? onProfileUpdated;
-  const _ProfileTab(
-      {super.key,
-      required this.userName,
-      required this.userEmail,
-      this.onProfileUpdated});
+  final VoidCallback onProfileUpdated;
+  const _ProfileTab({
+    super.key,
+    required this.userName,
+    required this.userEmail,
+    required this.onProfileUpdated,
+  });
 
   @override
   State<_ProfileTab> createState() => _ProfileTabState();
@@ -467,6 +405,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   String get userName => UserData.fullName;
   String get userEmail => UserData.email;
   String get userMobile => UserData.mobile;
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
@@ -483,9 +422,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                   border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3), width: 3),
+                      color: Colors.white.withOpacity(0.3), width: 3),
                 ),
                 child: const Icon(
                   Icons.person,
@@ -513,7 +452,7 @@ class _ProfileTabState extends State<_ProfileTab> {
             ],
           ),
           const SizedBox(height: 20),
-          // User Information
+          // User Info
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
@@ -522,26 +461,19 @@ class _ProfileTabState extends State<_ProfileTab> {
                 Text(
                   userName,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   userMobile.isNotEmpty ? userMobile : 'No phone number',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   userEmail,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ],
             ),
@@ -577,16 +509,12 @@ class _ProfileTabState extends State<_ProfileTab> {
                     Navigator.pushNamed(context, '/about');
                   }),
                   const SizedBox(height: 20),
-                  // Update Profile Button
                   Container(
                     width: double.infinity,
                     height: 56,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFFFB6C1), // Light pink
-                          Color(0xFFFFA07A), // Salmon pink
-                        ],
+                        colors: [Color(0xFFFFB6C1), Color(0xFFFFA07A)],
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ),
@@ -604,10 +532,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                       child: const Text(
                         'Update Profile',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -623,13 +550,8 @@ class _ProfileTabState extends State<_ProfileTab> {
   Widget _buildProfileOption(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFFF48A8A)),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+      title: Text(title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
@@ -648,115 +570,26 @@ class _ProfileTabState extends State<_ProfileTab> {
           builder: (context, setState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+                  borderRadius: BorderRadius.circular(20)),
               title: const Text(
                 'Update Profile',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D3748),
-                ),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3748)),
               ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Name Field
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Full Name',
-                          style: TextStyle(
-                            color: Color(0xFF2D3748),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: nameController,
-                          decoration: InputDecoration(
-                            hintText: 'Enter your full name',
-                            hintStyle:
-                                const TextStyle(color: Color(0xFFE53E3E)),
-                            filled: true,
-                            fillColor: const Color(0xFFE2E8F0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 16),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildTextField(
+                        'Full Name', nameController, 'Enter your full name'),
                     const SizedBox(height: 16),
-                    // Phone Field
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Phone Number',
-                          style: TextStyle(
-                            color: Color(0xFF2D3748),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: phoneController,
-                          decoration: InputDecoration(
-                            hintText: 'XXX-XXX-XXXX',
-                            hintStyle:
-                                const TextStyle(color: Color(0xFFE53E3E)),
-                            filled: true,
-                            fillColor: const Color(0xFFE2E8F0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 16),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildTextField(
+                        'Phone Number', phoneController, 'XXX-XXX-XXXX'),
                     const SizedBox(height: 16),
-                    // Email Field
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Email',
-                          style: TextStyle(
-                            color: Color(0xFF2D3748),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: emailController,
-                          decoration: InputDecoration(
-                            hintText: 'example@example.com',
-                            hintStyle:
-                                const TextStyle(color: Color(0xFFE53E3E)),
-                            filled: true,
-                            fillColor: const Color(0xFFE2E8F0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 16),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildTextField(
+                        'Email', emailController, 'example@example.com'),
                   ],
                 ),
               ),
@@ -764,13 +597,10 @@ class _ProfileTabState extends State<_ProfileTab> {
                 TextButton(
                   onPressed:
                       isLoading ? null : () => Navigator.of(context).pop(),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: Color(0xFF718096),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: const Text('Cancel',
+                      style: TextStyle(
+                          color: Color(0xFF718096),
+                          fontWeight: FontWeight.w600)),
                 ),
                 ElevatedButton(
                   onPressed: isLoading
@@ -778,35 +608,30 @@ class _ProfileTabState extends State<_ProfileTab> {
                       : () async {
                           setState(() => isLoading = true);
 
-                          // Update user data
                           UserData.updateProfile(
                             fullName: nameController.text.trim(),
                             mobile: phoneController.text.trim(),
                             email: emailController.text.trim(),
                           );
 
-                          // Simulate API call delay
                           await Future.delayed(const Duration(seconds: 1));
-
                           setState(() => isLoading = false);
 
                           if (context.mounted) {
                             Navigator.of(context).pop();
-                            // Call the callback to refresh the parent
-                            widget.onProfileUpdated?.call();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Profile updated successfully!'),
-                                backgroundColor: Colors.green,
-                              ),
+                                  content:
+                                      Text('Profile updated successfully!'),
+                                  backgroundColor: Colors.green),
                             );
                           }
+                          widget.onProfileUpdated();
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF56565),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                        borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
                   ),
@@ -815,17 +640,12 @@ class _ProfileTabState extends State<_ProfileTab> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                              color: Colors.white, strokeWidth: 2),
                         )
-                      : const Text(
-                          'Save Changes',
+                      : const Text('Save Changes',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
                 ),
               ],
             );
@@ -834,33 +654,33 @@ class _ProfileTabState extends State<_ProfileTab> {
       },
     );
   }
+
+  Widget _buildTextField(
+      String label, TextEditingController controller, String hint) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                color: Color(0xFF2D3748),
+                fontSize: 16,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Color(0xFFE53E3E)),
+            filled: true,
+            fillColor: const Color(0xFFE2E8F0),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+        ),
+      ],
+    );
+  }
 }
-
-
-// Old Map
-/*FlutterMap(
-            options: const MapOptions(
-              initialCenter: LatLng(40.7128, -74.0060),
-              initialZoom: 12,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.sparsh.aidsense',
-              ),
-              StreamBuilder<List<Resource>>(
-                stream: service.watchResources(),
-                builder: (context, snapshot) {
-                  final resources = snapshot.data ?? sampleResources;
-                  return MarkerLayer(
-                    markers: resources.map((r) => Marker(
-                      point: LatLng(r.latitude, r.longitude),
-                      width: 36,
-                      height: 36,
-                      child: Icon(Icons.location_pin, color: primary, size: 32),
-                    )).toList(),
-                  );
-                },
-              )
-            ],
-          ), */

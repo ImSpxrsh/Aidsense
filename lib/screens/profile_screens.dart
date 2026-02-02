@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'resource_detail_screen.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
+import 'polyline_service.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -792,7 +793,12 @@ class FavoritesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
     return Scaffold(
-      appBar: AppBar(title: const Text('Favorites'), backgroundColor: primary),
+      appBar: AppBar(
+          title: const Text('Favorites'),
+          backgroundColor: primary,
+          titleTextStyle: const TextStyle(
+              color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+          iconTheme: const IconThemeData(color: Colors.white)),
       body: AnimatedBuilder(
         animation: FavoritesService(),
         builder: (context, _) {
@@ -823,7 +829,23 @@ class FavoritesScreen extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.directions),
-                        onPressed: () {},
+                        onPressed: () async {
+                          final polylineService = PolylineService();
+                          final markers =
+                              await polylineService.createMarkers(r);
+                          final polylines =
+                              await polylineService.getPolyline(r);
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DirectionsMapScreen(
+                                markers: markers,
+                                polylines: polylines,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       IconButton(
                         icon: Icon(

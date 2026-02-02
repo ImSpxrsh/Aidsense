@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import '../models.dart';
 import 'dart:async';
 
-
 class PolylineService {
   static const LatLng _userPosition = LatLng(40.7178, -74.0431);
   final ORSService orsService = ORSService();
@@ -31,7 +30,7 @@ class PolylineService {
   Future<Set<Marker>> createMarkers(Resource resource) async {
     final userIcon =
         await _getMarkerIcon('assets/images/person_marker.png', 60);
-    
+
     final type = resource.type.toLowerCase().trim();
 
     String iconPath;
@@ -106,6 +105,15 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF48A8A),
+        iconTheme:
+            const IconThemeData(color: Colors.white), // makes back button white
+        title: const Text(
+          'Directions',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
       body: GoogleMap(
         initialCameraPosition: const CameraPosition(
           target: LatLng(40.7178, -74.0431),

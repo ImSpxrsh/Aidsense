@@ -10,7 +10,9 @@ final GOOGLE_PLACES = dotenv.env['MAPS_API_KEY'];
 
 class ChatScreen extends StatefulWidget {
   final Resource? initialResource;
-  const ChatScreen({super.key, this.initialResource});
+  final bool showAppBar;
+
+  const ChatScreen({super.key, this.initialResource, this.showAppBar = false});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -180,7 +182,8 @@ class _ChatScreenState extends State<ChatScreen> {
     for (final type in explicitRequests.keys) {
       for (final phrase in explicitRequests[type]!) {
         if (lowerMessage.contains(phrase)) {
-          final matched = resources.where((r) => r.type.toLowerCase() == type);
+          final matched =
+              resources.where((r) => r.type.toLowerCase().contains(type));
           print("Matched ${matched.length} resources for $type"); // DEBUG
           suggestedResources.addAll(matched);
           break;
@@ -205,8 +208,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final gptPrompt = """
 User asked: "$message"
 About resource: "${widget.initialResource?.name ?? "general"}"
-Nearby Google Places found:
-${places.map((p) => "- ${p['name']} at ${p['vicinity']}").join("\n")}
+Nearby resources found:
+${suggestedResources.map((r) => "- ${r.name} at ${r.address} (${r.type})").join("\n")}
 Respond helpfully and specifically about this resource.
 """;
 
@@ -263,6 +266,22 @@ Respond helpfully and specifically about this resource.
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: widget.showAppBar
+          ? AppBar(
+              backgroundColor: const Color(0xFFF48A8A),
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: const Text(
+                'Ask AI',
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              centerTitle: true,
+            )
+          : null,
       body: SafeArea(
         child: Column(
           children: [
