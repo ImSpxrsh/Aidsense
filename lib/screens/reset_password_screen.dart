@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -14,14 +14,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   Future<void> _reset() async {
     setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: _email.text.trim());
+      await Supabase.instance.client.auth.resetPasswordForEmail(_email.text.trim());
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password reset email sent.')));
       Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _loading = false);
     }

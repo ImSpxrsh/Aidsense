@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../user_data.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -30,14 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Check if user is logged in
-      if (UserData.isLoggedIn) {
+      // Sign in with Supabase
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _email.text.trim(),
+        password: _pass.text.trim(),
+      );
+
+      if (response.user != null) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Login successful')));
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please sign up first')));
+            const SnackBar(content: Text('Login failed')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context)

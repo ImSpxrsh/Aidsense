@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../user_data.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -19,18 +20,30 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup() async {
     setState(() => _loading = true);
     try {
-      // Save user data using simple in-memory storage
-      UserData.saveUser(
-        fullName: _fullName.text.trim(),
+      // Sign up with Supabase
+      final response = await Supabase.instance.client.auth.signUp(
         email: _email.text.trim(),
-        mobile: _mobileNumber.text.trim(),
-        dateOfBirth: _dateOfBirth.text.trim(),
+        password: _pass.text.trim(),
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account created successfully!')));
-      Navigator.pushReplacementNamed(context, '/home');
+      if (response.user != null) {
+        // Save additional user data if needed
+        UserData.saveUser(
+          fullName: _fullName.text.trim(),
+          email: _email.text.trim(),
+          mobile: _mobileNumber.text.trim(),
+          dateOfBirth: _dateOfBirth.text.trim(),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Account created successfully!')));
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Signup failed')));
+      }
     } catch (e) {
+      print('Signup error: $e');
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {

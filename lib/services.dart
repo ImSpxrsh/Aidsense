@@ -1,36 +1,28 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models.dart';
 
 class ResourceService {
-  final FirebaseFirestore firestore;
-  ResourceService({FirebaseFirestore? instance})
-      : firestore = instance ?? FirebaseFirestore.instance;
+  final SupabaseClient client;
+  ResourceService({SupabaseClient? instance})
+      : client = instance ?? Supabase.instance.client;
 
   Stream<List<Resource>> watchResources() {
     try {
-      return firestore.collection('resources').snapshots().map((snap) =>
-          snap.docs.map((d) => Resource.fromMap(d.id, d.data())).toList());
+      return client.from('resources').stream(primaryKey: ['id']).map((data) =>
+          data.map((d) => Resource.fromMap(d['id'], d)).toList());
     } catch (_) {
       return Stream.value([]);
     }
   }
 
-  // Future<List<Resource>> fetchResourcesOnce() async {
-  //   try {
-  //     final query = await firestore.collection('resources').get();
-  //     return query.docs.map((d) => Resource.fromMap(d.id, d.data())).toList();
-  //   } catch (_) {
-  //     return sampleResources;
-  //   }
-  // }
-Future<List<Resource>> fetchResourcesOnce() async {
-  try {
-    final query = await firestore.collection('resources').get();
-    return query.docs.map((d) => Resource.fromMap(d.id, d.data())).toList();
-  } catch (_) {
-    return []; // return empty list if Firestore fails
+  Future<List<Resource>> fetchResourcesOnce() async {
+    try {
+      final response = await client.from('resources').select();
+      return (response as List<dynamic>).map((d) => Resource.fromMap(d['id'], d as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return []; // return empty list if Supabase fails
+    }
   }
-}
 }
 
 // final List<Resource> sampleResources = [
