@@ -162,12 +162,12 @@ class _MapAndListTabState extends State<_MapAndListTab> {
       return;
     }
     final List<Resource> all = [];
-    const categories = ['shelter', 'food', 'clinic', 'pharmacy'];
+    const categories = ['shelter', 'food', 'clinic', 'Mental Health'];
     final keywordMap = {
       'food': 'food bank soup kitchen',
       'shelter': 'homeless shelter',
       'clinic': 'free clinic community health',
-      'pharmacy': 'pharmacy'
+      'Mental Health': 'mental health counseling therapy',
     };
     for (final c in categories) {
       final places = await PlacesService.fetchNearby(
@@ -175,8 +175,12 @@ class _MapAndListTabState extends State<_MapAndListTab> {
         lng: pos.longitude,
         keyword: keywordMap[c]!,
       );
+      // Fetch details for each place
+      final detailedPlaces = await Future.wait(
+        places.map((p) => PlacesService.fetchDetails(p)),
+      );
       all.addAll(
-        places.map((p) {
+        detailedPlaces.map((p) {
           // Tag logic
           List<String> tags;
           switch (c) {
@@ -189,11 +193,11 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             case 'clinic':
               tags = ['Medical', 'Care'];
               break;
-            case 'pharmacy':
-              tags = ['Medicine', 'Supplies'];
+            case 'Mental Health':
+              tags = ['Counseling', 'Therapy', 'Support'];
               break;
             default:
-              tags = [c[0].toUpperCase() + c.substring(1)];
+              tags = [c];
           }
           return Resource(
             id: p.placeId,
@@ -225,8 +229,9 @@ class _MapAndListTabState extends State<_MapAndListTab> {
           r.address.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           r.tags.any(
               (tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()));
-      final matchesFilter =
-          _selectedFilter == 'all' || r.type == _selectedFilter;
+      final matchesFilter = _selectedFilter == 'All' ||
+          _selectedFilter == 'all' ||
+          r.type.toLowerCase() == _selectedFilter.toLowerCase();
       return matchesSearch && matchesFilter;
     }).toList();
   }
@@ -234,7 +239,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
-    final filters = ['all', 'shelter', 'food', 'pharmacy', 'clinic'];
+    final filters = ['All', 'Shelter', 'Food', 'Clinic', 'Mental Health'];
     return Column(
       children: [
         Padding(
@@ -273,7 +278,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
               return FilterChip(
                 selected: _selectedFilter == f,
                 showCheckmark: false,
-                label: Text(f[0].toUpperCase() + f.substring(1)),
+                label: Text(f), // All types capitalized
                 onSelected: (_) => setState(() => _selectedFilter = f),
               );
             },
@@ -295,7 +300,19 @@ class _MapAndListTabState extends State<_MapAndListTab> {
         Expanded(
           flex: 2,
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(
+                        _getLoadingMessage(),
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                )
               : _filteredPlaces.isEmpty
                   ? Center(
                       child: Column(
@@ -374,12 +391,28 @@ class _MapAndListTabState extends State<_MapAndListTab> {
         return Icons.home;
       case 'food':
         return Icons.restaurant;
-      case 'pharmacy':
-        return Icons.local_pharmacy;
       case 'clinic':
         return Icons.local_hospital;
+      case 'Mental Health':
+        return Icons.psychology;
       default:
         return Icons.location_on;
+    }
+  }
+
+  String _getLoadingMessage() {
+    switch (_selectedFilter) {
+      case 'Shelter':
+        return 'Searching for shelters...';
+      case 'Food':
+        return 'Searching for food...';
+      case 'Clinic':
+        return 'Searching for clinics...';
+      case 'Mental Health':
+        return 'Searching for mental health services...';
+      case 'All':
+      default:
+        return 'Searching for resources...';
     }
   }
 }

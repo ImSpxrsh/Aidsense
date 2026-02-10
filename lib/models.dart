@@ -1,7 +1,7 @@
 class Resource {
   final String id;
   final String name;
-  final String type; // e.g. shelter, clinic, food, pharmacy
+  final String type; // e.g. shelter, clinic, food, mental_health
   final String address;
   final double latitude;
   final double longitude;
@@ -29,7 +29,8 @@ class Resource {
       address: data['address'] ?? '',
       latitude: (data['latitude'] ?? 0).toDouble(),
       longitude: (data['longitude'] ?? 0).toDouble(),
-      tags: (data['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      tags: (data['tags'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
       phone: data['phone'] ?? '',
       website: data['website'] ?? '',
     );
@@ -70,7 +71,9 @@ class UserProfile {
       fullName: data['fullName'] ?? '',
       phone: data['phone'] ?? '',
       email: data['email'] ?? '',
-      favorites: (data['favorites'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      favorites:
+          (data['favorites'] as List?)?.map((e) => e.toString()).toList() ??
+              const [],
     );
   }
 
@@ -83,5 +86,3 @@ class UserProfile {
     };
   }
 }
-
-

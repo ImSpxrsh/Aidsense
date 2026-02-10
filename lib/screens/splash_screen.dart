@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,12 +35,24 @@ class _SplashScreenState extends State<SplashScreen>
     // Start animation
     _animationController.forward();
 
-    // Navigate to onboarding after 2 seconds
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/onboarding');
-      }
-    });
+    // Initialize app
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      await Supabase.initialize(
+        url: 'https://ezauuxxtvmgwhhwzfvkr.supabase.co',
+        anonKey: 'sb_publishable_ax9mbOjgUDhBFwhp5VcDjg_9Gs0FBKW',
+      );
+      debugPrint('Supabase initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing Supabase: $e');
+    }
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/onboarding');
+    }
   }
 
   @override

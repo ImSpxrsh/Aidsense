@@ -3,6 +3,8 @@ import 'resource_detail_screen.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'polyline_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -154,7 +156,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
+              color: const Color(0xFF1E88E5).withAlpha(25),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -272,7 +274,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               border: Border.all(color: Colors.white, width: 3),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
+                                  color: Colors.black.withAlpha(51),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
@@ -574,7 +576,7 @@ class HelpCenterScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.1),
+              color: primary.withAlpha(25),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -830,16 +832,19 @@ class FavoritesScreen extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.directions),
                         onPressed: () async {
+                          // Get user's current location
+                          final userLatLng = await _getUserLatLng();
                           final polylineService = PolylineService();
-                          final markers =
-                              await polylineService.createMarkers(r);
+                          final markers = await polylineService.createMarkers(
+                              r, userLatLng);
                           final polylines =
-                              await polylineService.getPolyline(r);
+                              await polylineService.getPolyline(r, userLatLng);
 
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => DirectionsMapScreen(
+                                userPosition: userLatLng,
                                 markers: markers,
                                 polylines: polylines,
                               ),
@@ -877,6 +882,12 @@ class FavoritesScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<LatLng> _getUserLatLng() async {
+    Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    return LatLng(pos.latitude, pos.longitude);
   }
 }
 

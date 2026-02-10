@@ -21,6 +21,7 @@ dependencies:
   http: ^1.5.0
   flutter_dotenv: ^6.0.0
   flutter_svg: ^2.0.10+1
+  url_launcher: ^6.2.1
 
 
 dev_dependencies:
@@ -47,4 +48,5 @@ flutter:
     - assets/images/clinic_marker.png
     - assets/images/food_bank_marker.png
     - assets/images/person_marker.png
+    - assets/images/mental_health_marker.png
     - .env

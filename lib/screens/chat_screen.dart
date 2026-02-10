@@ -11,8 +11,14 @@ final GOOGLE_PLACES = dotenv.env['MAPS_API_KEY'];
 class ChatScreen extends StatefulWidget {
   final Resource? initialResource;
   final bool showAppBar;
+  final List<Resource>? resources; // <-- Add this
 
-  const ChatScreen({super.key, this.initialResource, this.showAppBar = false});
+  const ChatScreen({
+    super.key,
+    this.initialResource,
+    this.showAppBar = false,
+    this.resources,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -166,7 +172,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<ChatResponse> _processUserMessage(String message) async {
     final lowerMessage = message.toLowerCase().trim();
-    final resources = await _resourceService.fetchResourcesOnce();
+    // Use real resources if provided
+    final resources =
+        widget.resources ?? await _resourceService.fetchResourcesOnce();
     print("Fetched ${resources.length} resources from service"); // DEBUG
 
     final Set<Resource> suggestedResources = {};
@@ -175,7 +183,6 @@ class _ChatScreenState extends State<ChatScreen> {
       'shelter': ['i need shelter'],
       'food': ['i need food'],
       'clinic': ['i need medical help', 'i need a doctor', 'i need a clinic'],
-      'pharmacy': ['i need medication', 'i need a pharmacy'],
       'mental': ['i need therapy', 'i need counseling', 'i need mental help'],
     };
 
@@ -196,15 +203,7 @@ class _ChatScreenState extends State<ChatScreen> {
       print("No explicit match, fallback to first 3 resources"); // DEBUG
     }
 
-    List<Map<String, dynamic>> places = [];
-    if (widget.initialResource != null) {
-      final r = widget.initialResource!;
-      final lat = r.latitude; // REPLACE with actual lat if available
-      final lng = r.longitude; // REPLACE with actual lng if available
-      places = await fetchNearbyPlaces(r.name, lat, lng);
-    }
-
-// Build GPT prompt
+    // Build GPT prompt
     final gptPrompt = """
 User asked: "$message"
 About resource: "${widget.initialResource?.name ?? "general"}"
@@ -392,7 +391,7 @@ Respond helpfully and specifically about this resource.
             children: [
               if (!message.isUser)
                 CircleAvatar(
-                  backgroundColor: primary.withValues(alpha: 0.1),
+                  backgroundColor: primary.withAlpha(25),
                   radius: 16,
                   child: Icon(Icons.smart_toy, color: primary, size: 18),
                 ),
@@ -468,7 +467,7 @@ Respond helpfully and specifically about this resource.
               if (message.isUser) const SizedBox(width: 8),
               if (message.isUser)
                 CircleAvatar(
-                  backgroundColor: primary.withValues(alpha: 0.8),
+                  backgroundColor: primary.withAlpha(204),
                   radius: 16,
                   child:
                       const Icon(Icons.person, color: Colors.white, size: 18),
@@ -513,7 +512,7 @@ Respond helpfully and specifically about this resource.
       margin: const EdgeInsets.only(bottom: 8, left: 40),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: primary.withValues(alpha: 0.1),
+          backgroundColor: primary.withAlpha(25),
           child: Icon(
             _getResourceIcon(resource.type),
             color: primary,
@@ -531,7 +530,7 @@ Respond helpfully and specifically about this resource.
               children: [
                 Chip(
                   label: Text(resource.type),
-                  backgroundColor: primary.withValues(alpha: 0.1),
+                  backgroundColor: primary.withAlpha(25),
                   labelStyle: TextStyle(color: primary, fontSize: 10),
                 ),
               ],
@@ -551,7 +550,7 @@ Respond helpfully and specifically about this resource.
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: const Color(0xFFF48A8A).withValues(alpha: 0.1),
+            backgroundColor: const Color(0xFFF48A8A).withAlpha(25),
             radius: 16,
             child:
                 const Icon(Icons.smart_toy, color: Color(0xFFF48A8A), size: 18),
@@ -603,9 +602,9 @@ Respond helpfully and specifically about this resource.
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: primary.withValues(alpha: 0.1),
+          color: primary.withAlpha(25),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: primary.withValues(alpha: 0.3)),
+          border: Border.all(color: primary.withAlpha(76)),
         ),
         child: Text(
           text,
@@ -625,8 +624,6 @@ Respond helpfully and specifically about this resource.
         return Icons.home;
       case 'food':
         return Icons.restaurant;
-      case 'pharmacy':
-        return Icons.local_pharmacy;
       case 'clinic':
         return Icons.local_hospital;
       default:

@@ -40,6 +40,7 @@ class MapPageState extends State<MapPage> {
   BitmapDescriptor? _clinicIcon;
   BitmapDescriptor? _foodIcon;
   BitmapDescriptor? _userIcon;
+  BitmapDescriptor? _mentalHealthIcon;
 
   LatLng? _userPosition;
   LatLng? _lastFetchedLocation;
@@ -66,8 +67,6 @@ class MapPageState extends State<MapPage> {
         return ['Medical help', 'Checkups'];
       case 'food bank':
         return ['Groceries', 'Free meals'];
-      case 'pharmacy':
-        return ['Medicine', 'Supplies'];
       default:
         return ['Community Support'];
     }
@@ -87,6 +86,12 @@ class MapPageState extends State<MapPage> {
   @override
   void didUpdateWidget(MapPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Reload markers if resources, searchQuery, or selectedFilter change
+    if (widget.resources != oldWidget.resources ||
+        widget.searchQuery != oldWidget.searchQuery ||
+        widget.selectedFilter != oldWidget.selectedFilter) {
+      loadData();
+    }
     if (widget.initialPosition != null &&
         _userPosition != widget.initialPosition) {
       setState(() => _userPosition = widget.initialPosition);
@@ -109,34 +114,28 @@ class MapPageState extends State<MapPage> {
 //Load Icons
   Future<void> _loadResourceIcons() async {
     _userIcon = BitmapDescriptor.bytes(
-      await getImages('assets/images/person_marker.png', 50),
+      await getImages('assets/images/person_marker.png', 75),
     );
-
     _shelterIcon = BitmapDescriptor.bytes(
-      await getImages('assets/images/shelter_marker1.png', 50),
+      await getImages('assets/images/shelter_marker1.png', 55),
     );
-
     _clinicIcon = BitmapDescriptor.bytes(
-      await getImages('assets/images/clinic_marker.png', 50),
+      await getImages('assets/images/clinic_marker.png', 55),
     );
-
     _foodIcon = BitmapDescriptor.bytes(
-      await getImages('assets/images/food_bank_marker.png', 50),
+      await getImages('assets/images/food_bank_marker.png', 55),
     );
-
+    _mentalHealthIcon = BitmapDescriptor.bytes(
+      await getImages('assets/images/mental_health_marker.png', 85),
+    );
     _resourceIcons['shelter'] = _shelterIcon!;
     _resourceIcons['clinic'] = _clinicIcon!;
     _resourceIcons['food'] = _foodIcon!;
-    _resourceIcons['pharmacy'] = BitmapDescriptor.defaultMarkerWithHue(
-      BitmapDescriptor.hueRose,
-    );
-    _resourceIcons['other'] = BitmapDescriptor.defaultMarkerWithHue(
-      BitmapDescriptor.hueAzure,
-    );
-
+    _resourceIcons['mental health'] = _mentalHealthIcon!;
+    _resourceIcons['mental_health'] = _mentalHealthIcon!;
+    _resourceIcons['other'] =
+        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
     _iconsLoaded = true;
-
-// trigger marker load if location already exists
     if (_userPosition != null) {
       loadData();
     }
@@ -145,7 +144,9 @@ class MapPageState extends State<MapPage> {
   Future<void> loadData() async {
     if (_userPosition == null || !_iconsLoaded) return;
 
-    _markers.clear();
+    setState(() {
+      _markers.clear();
+    });
 
     // --- User Marker ---
     _markers.add(
@@ -157,31 +158,31 @@ class MapPageState extends State<MapPage> {
       ),
     );
 
-    // --- Same resources as the list (from home_screen), so map and list match ---
-    for (final r in widget.resources.where((r) {
-      final matchesSearch = widget.searchQuery.isEmpty ||
-          r.name.toLowerCase().contains(widget.searchQuery.toLowerCase());
-
-      final matchesFilter =
-          widget.selectedFilter == 'all' || r.type == widget.selectedFilter;
-
-      return matchesSearch && matchesFilter;
-    })) {
+    // --- Show only resources passed from home_screen (already filtered) ---
+    for (final r in widget.resources) {
       final d = distanceInKm(
         _userPosition!.latitude,
         _userPosition!.longitude,
         r.latitude,
         r.longitude,
       );
-      final icon = _resourceIcons[r.type.toLowerCase().trim()] ??
-          _resourceIcons['other']!;
-
+      String iconKey = _resourceIcons.keys.firstWhere(
+        (k) => r.type.toLowerCase().contains(k),
+        orElse: () => 'other',
+      );
+      final icon = _resourceIcons[iconKey]!;
       if (d <= 5.0) {
         _markers.add(
           Marker(
             markerId: MarkerId('resource_${r.id}'),
             position: LatLng(r.latitude, r.longitude),
-            infoWindow: InfoWindow(title: r.name, snippet: r.address),
+            infoWindow: InfoWindow(
+              title: r.name,
+              snippet: [
+                if (r.phone.isNotEmpty) 'Phone: ${r.phone}',
+                if (r.website.isNotEmpty) 'Website: ${r.website}'
+              ].join('\n'),
+            ),
             icon: icon,
             onTap: () => _showResourceBottomSheet(r),
           ),
@@ -320,10 +321,14 @@ class MapPageState extends State<MapPage> {
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text(resource.address),
-            const SizedBox(height: 4),
-            Text('Phone: ${resource.phone}'),
-            const SizedBox(height: 4),
-            Text('Website: ${resource.website}'),
+            if (resource.phone.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('Phone: ${resource.phone}'),
+            ],
+            if (resource.website.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('Website: ${resource.website}'),
+            ],
             const SizedBox(height: 4),
             Text('Tags: ${resource.tags.join(', ')}'),
           ],

@@ -3,7 +3,8 @@ import '../models.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'polyline_service.dart';
 import 'chat_screen.dart';
-
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ResourceDetailScreen extends StatelessWidget {
   const ResourceDetailScreen({super.key});
@@ -28,7 +29,7 @@ class ResourceDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Container(
-            height: 160,
+            height: 220, // Less zoomed in
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -37,7 +38,7 @@ class ResourceDetailScreen extends StatelessWidget {
               child: GoogleMap(
                 initialCameraPosition: CameraPosition(
                   target: LatLng(r.latitude, r.longitude),
-                  zoom: 15,
+                  zoom: 13, // Less zoom for wider view
                 ),
                 markers: {
                   Marker(
@@ -64,34 +65,53 @@ class ResourceDetailScreen extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final polylineService = PolylineService();
-                    final markers = await polylineService.createMarkers(r);
-                    final polylines = await polylineService.getPolyline(r);
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DirectionsMapScreen(
-                          markers: markers,
-                          polylines: polylines,
-                        ),
-                      ),
-                    );
+                    final url = r.website.startsWith('http')
+                        ? r.website
+                        : 'https://${r.website}';
+                    try {
+                      await launchUrl(Uri.parse(url),
+                          mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Could not launch website')),
+                      );
+                    }
                   },
-                  icon: const Icon(Icons.directions),
-                  label: const Text('Directions'),
+                  icon: const Icon(Icons.language),
+                  label: const Text(
+                    'Website',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFFF48A8A),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Opening phone app...')),
-                    );
+                  onPressed: () async {
+                    final phoneUri = Uri(scheme: 'tel', path: r.phone);
+                    try {
+                      await launchUrl(phoneUri);
+                    } catch (_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Could not launch phone app')),
+                      );
+                    }
                   },
                   icon: const Icon(Icons.phone),
-                  label: const Text('Call'),
+                  label: const Text(
+                    'Call',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFFF48A8A),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -101,13 +121,32 @@ class ResourceDetailScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Opening website...')),
+                  onPressed: () async {
+                    final userLatLng = await _getUserLatLng();
+                    final polylineService = PolylineService();
+                    final routeInfo = await polylineService.getPolylineWithInfo(
+                        r, userLatLng);
+                    final markers =
+                        await polylineService.createMarkers(r, userLatLng);
+                    final polylines = routeInfo['polyline'] as Set<Polyline>;
+                    final distance = routeInfo['distance'] as double;
+                    final duration = routeInfo['duration'] as double;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DirectionsMapScreen(
+                          userPosition: userLatLng,
+                          markers: markers,
+                          polylines: polylines,
+                          distance: distance,
+                          duration: duration,
+                        ),
+                      ),
                     );
                   },
-                  icon: const Icon(Icons.language),
-                  label: const Text('Website'),
+                  icon: const Icon(Icons.directions),
+                  label: const Text('Directions'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -152,7 +191,10 @@ class ResourceDetailScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatScreen(initialResource: r, showAppBar: true,),
+                        builder: (_) => ChatScreen(
+                          initialResource: r,
+                          showAppBar: true,
+                        ),
                       ),
                     );
                   },
@@ -170,6 +212,12 @@ class ResourceDetailScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<LatLng> _getUserLatLng() async {
+  Position pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high);
+  return LatLng(pos.latitude, pos.longitude);
 }
 
 // To add favorites

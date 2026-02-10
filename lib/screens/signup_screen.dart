@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../user_data.dart';
 
@@ -39,8 +40,8 @@ class _SignupScreenState extends State<SignupScreen> {
             const SnackBar(content: Text('Account created successfully!')));
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Signup failed')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Signup failed')));
       }
     } catch (e) {
       print('Signup error: $e');
@@ -163,19 +164,29 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Mobile Number Field
+            // Mobile Number Field (auto-format)
             _buildInputField(
               label: 'Mobile Number',
               controller: _mobileNumber,
               placeholder: 'XXX-XXX-XXXX',
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                _PhoneNumberFormatter(),
+              ],
             ),
             const SizedBox(height: 20),
 
-            // Date of Birth Field
+            // Date of Birth Field (auto-format)
             _buildInputField(
               label: 'Date Of Birth',
               controller: _dateOfBirth,
               placeholder: 'DD / MM / YYYY',
+              keyboardType: TextInputType.datetime,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                _DateOfBirthFormatter(),
+              ],
             ),
             const SizedBox(height: 24),
 
@@ -282,6 +293,8 @@ class _SignupScreenState extends State<SignupScreen> {
     required String label,
     required TextEditingController controller,
     required String placeholder,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,6 +310,8 @@ class _SignupScreenState extends State<SignupScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
             hintText: placeholder,
             hintStyle: const TextStyle(color: Color(0xFFE53E3E)),
@@ -355,6 +370,62 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// Phone number formatter
+class _PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    String formatted = '';
+    if (digits.length >= 3) {
+      formatted += digits.substring(0, 3);
+      if (digits.length >= 6) {
+        formatted += '-' + digits.substring(3, 6);
+        if (digits.length > 6) {
+          formatted += '-' +
+              digits.substring(6, digits.length > 10 ? 10 : digits.length);
+        }
+      } else {
+        formatted += '-' + digits.substring(3);
+      }
+    } else {
+      formatted = digits;
+    }
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+// Date of birth formatter
+class _DateOfBirthFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    String formatted = '';
+    if (digits.length >= 2) {
+      formatted += digits.substring(0, 2);
+      if (digits.length >= 4) {
+        formatted += ' / ' + digits.substring(2, 4);
+        if (digits.length > 4) {
+          formatted += ' / ' +
+              digits.substring(4, digits.length > 8 ? 8 : digits.length);
+        }
+      } else {
+        formatted += ' / ' + digits.substring(2);
+      }
+    } else {
+      formatted = digits;
+    }
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

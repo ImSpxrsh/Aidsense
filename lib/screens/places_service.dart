@@ -49,8 +49,9 @@ class PlacesService {
   // Map your keywords to Google supported types
   static const Map<String, String> typeMap = {
     'shelter': 'lodging',
-    'clinic': 'hospital',
-    'pharmacy': 'pharmacy',
+    'clinic': 'doctor',
+    'food': 'food',
+    'mental_health': 'health', // Google Places type for mental health resources
     'food bank': 'grocery_or_supermarket',
   };
 
@@ -63,7 +64,7 @@ class PlacesService {
     final type = typeMap[keyword.toLowerCase()] ?? '';
     final url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
         '?location=$lat,$lng'
-        '&radius=3000' // 3 km
+        '&radius=2000' // 2 km
         '${type.isNotEmpty ? '&type=$type' : ''}'
         '&keyword=${Uri.encodeComponent(keyword)}'
         '&key=$_apiKey';
