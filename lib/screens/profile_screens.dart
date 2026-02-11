@@ -5,6 +5,8 @@ import 'privacy_policy_screen.dart';
 import 'polyline_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../user_data.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -42,9 +44,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     setState(() => _loading = true);
 
     try {
-      // In a real app, you'd save to Firebase/backend here
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-
+      // Save profile to Supabase
+      await Supabase.instance.client.from('profiles').upsert({
+        'uid': Supabase.instance.client.auth.currentUser?.id,
+        'fullName': _fullNameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+      });
+      await UserData.loadFromSupabase();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

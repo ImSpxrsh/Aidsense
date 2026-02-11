@@ -40,15 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeApp() async {
-    try {
-      await Supabase.initialize(
-        url: 'https://ezauuxxtvmgwhhwzfvkr.supabase.co',
-        anonKey: 'sb_publishable_ax9mbOjgUDhBFwhp5VcDjg_9Gs0FBKW',
-      );
-      debugPrint('Supabase initialized successfully');
-    } catch (e) {
-      debugPrint('Error initializing Supabase: $e');
-    }
+    // Remove duplicate Supabase.initialize here, since it's already in main.dart
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/onboarding');

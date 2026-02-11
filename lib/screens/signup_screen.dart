@@ -28,14 +28,15 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (response.user != null) {
-        // Save additional user data if needed
-        UserData.saveUser(
-          fullName: _fullName.text.trim(),
-          email: _email.text.trim(),
-          mobile: _mobileNumber.text.trim(),
-          dateOfBirth: _dateOfBirth.text.trim(),
-        );
-
+        // Create profile in Supabase
+        await Supabase.instance.client.from('profiles').upsert({
+          'uid': response.user!.id,
+          'fullName': _fullName.text.trim(),
+          'email': _email.text.trim(),
+          'phone': _mobileNumber.text.trim(),
+          'favorites': [],
+        });
+        await UserData.loadFromSupabase();
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Account created successfully!')));
         Navigator.pushReplacementNamed(context, '/home');

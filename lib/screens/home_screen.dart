@@ -23,16 +23,102 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final GlobalKey<_ProfileTabState> _profileKey = GlobalKey<_ProfileTabState>();
 
+  // Shared resource state
+  List<Resource> _resources = [];
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadNearbyPlaces();
   }
 
   void _loadUserData() {
     setState(() {
       userName = UserData.fullName;
       userEmail = UserData.email;
+    });
+  }
+
+  Future<void> _loadNearbyPlaces() async {
+    setState(() => _loading = true);
+    final location = Location();
+    bool enabled = await location.serviceEnabled();
+    if (!enabled) {
+      enabled = await location.requestService();
+      if (!enabled) {
+        setState(() => _loading = false);
+        return;
+      }
+    }
+    PermissionStatus perm = await location.hasPermission();
+    if (perm == PermissionStatus.denied) {
+      perm = await location.requestPermission();
+      if (perm != PermissionStatus.granted) {
+        setState(() => _loading = false);
+        return;
+      }
+    }
+    final loc = await location.getLocation();
+    if (loc.latitude == null || loc.longitude == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    final pos = LatLng(loc.latitude!, loc.longitude!);
+    final List<Resource> all = [];
+    const categories = ['shelter', 'food', 'clinic', 'Mental Health'];
+    final keywordMap = {
+      'food': 'food bank soup kitchen',
+      'shelter': 'homeless shelter',
+      'clinic': 'free clinic community health',
+      'Mental Health': 'mental health counseling therapy',
+    };
+    for (final c in categories) {
+      final places = await PlacesService.fetchNearby(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        keyword: keywordMap[c]!,
+      );
+      final detailedPlaces = await Future.wait(
+        places.map((p) => PlacesService.fetchDetails(p)),
+      );
+      all.addAll(
+        detailedPlaces.map((p) {
+          List<String> tags;
+          switch (c) {
+            case 'shelter':
+              tags = ['Housing', 'Assistance'];
+              break;
+            case 'food':
+              tags = ['Groceries', 'Meals'];
+              break;
+            case 'clinic':
+              tags = ['Medical', 'Care'];
+              break;
+            case 'Mental Health':
+              tags = ['Counseling', 'Therapy', 'Support'];
+              break;
+            default:
+              tags = [c];
+          }
+          return Resource(
+            id: p.placeId,
+            name: p.name,
+            type: c,
+            address: p.address,
+            latitude: p.lat,
+            longitude: p.lng,
+            phone: p.phone,
+            website: p.website,
+            tags: tags,
+          );
+        }),
+      );
+    }
+    setState(() {
+      _resources = all;
+      _loading = false;
     });
   }
 
@@ -86,8 +172,8 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _tab,
         children: [
-          const _MapAndListTab(),
-          const ChatScreen(),
+          _MapAndListTab(resources: _resources, loading: _loading),
+          ChatScreen(resources: _resources),
           _ProfileTab(
               key: _profileKey,
               userName: userName,
@@ -118,112 +204,23 @@ class _HomeScreenState extends State<HomeScreen> {
 /* ---------------- MAP + LIST TAB ---------------- */
 
 class _MapAndListTab extends StatefulWidget {
-  const _MapAndListTab();
+  final List<Resource> resources;
+  final bool loading;
+  const _MapAndListTab(
+      {Key? key, required this.resources, required this.loading})
+      : super(key: key);
 
   @override
   State<_MapAndListTab> createState() => _MapAndListTabState();
 }
 
 class _MapAndListTabState extends State<_MapAndListTab> {
-  List<Resource> _places = [];
-  bool _loading = true;
   String _selectedFilter = 'all';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadNearbyPlaces();
-  }
-
-  Future<LatLng?> _getUserLocation() async {
-    final location = Location();
-    bool enabled = await location.serviceEnabled();
-    if (!enabled) {
-      enabled = await location.requestService();
-      if (!enabled) return null;
-    }
-    PermissionStatus perm = await location.hasPermission();
-    if (perm == PermissionStatus.denied) {
-      perm = await location.requestPermission();
-      if (perm != PermissionStatus.granted) return null;
-    }
-    final loc = await location.getLocation();
-    if (loc.latitude == null || loc.longitude == null) return null;
-    return LatLng(loc.latitude!, loc.longitude!);
-  }
-
-  Future<void> _loadNearbyPlaces() async {
-    setState(() => _loading = true);
-    final pos = await _getUserLocation();
-    if (pos == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    final List<Resource> all = [];
-    const categories = ['shelter', 'food', 'clinic', 'Mental Health'];
-    final keywordMap = {
-      'food': 'food bank soup kitchen',
-      'shelter': 'homeless shelter',
-      'clinic': 'free clinic community health',
-      'Mental Health': 'mental health counseling therapy',
-    };
-    for (final c in categories) {
-      final places = await PlacesService.fetchNearby(
-        lat: pos.latitude,
-        lng: pos.longitude,
-        keyword: keywordMap[c]!,
-      );
-      // Fetch details for each place
-      final detailedPlaces = await Future.wait(
-        places.map((p) => PlacesService.fetchDetails(p)),
-      );
-      all.addAll(
-        detailedPlaces.map((p) {
-          // Tag logic
-          List<String> tags;
-          switch (c) {
-            case 'shelter':
-              tags = ['Housing', 'Assistance'];
-              break;
-            case 'food':
-              tags = ['Groceries', 'Meals'];
-              break;
-            case 'clinic':
-              tags = ['Medical', 'Care'];
-              break;
-            case 'Mental Health':
-              tags = ['Counseling', 'Therapy', 'Support'];
-              break;
-            default:
-              tags = [c];
-          }
-          return Resource(
-            id: p.placeId,
-            name: p.name,
-            type: c,
-            address: p.address,
-            latitude: p.lat,
-            longitude: p.lng,
-            phone: p.phone,
-            website: p.website,
-            tags: tags,
-          );
-        }),
-      );
-    }
-    if (all.isEmpty) {
-      debugPrint('No resources found from Google Places.');
-    }
-    setState(() {
-      _places = all;
-      _loading = false;
-    });
-  }
-
   List<Resource> get _filteredPlaces {
-    return _places.where((r) {
+    return widget.resources.where((r) {
       final matchesSearch = _searchQuery.isEmpty ||
           r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           r.address.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -278,7 +275,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
               return FilterChip(
                 selected: _selectedFilter == f,
                 showCheckmark: false,
-                label: Text(f), // All types capitalized
+                label: Text(f),
                 onSelected: (_) => setState(() => _selectedFilter = f),
               );
             },
@@ -292,14 +289,15 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             resources: _filteredPlaces,
             searchQuery: _searchQuery,
             selectedFilter: _selectedFilter,
-            initialPosition: _places.isNotEmpty
-                ? LatLng(_places.first.latitude, _places.first.longitude)
+            initialPosition: _filteredPlaces.isNotEmpty
+                ? LatLng(_filteredPlaces.first.latitude,
+                    _filteredPlaces.first.longitude)
                 : null,
           ),
         ),
         Expanded(
           flex: 2,
-          child: _loading
+          child: widget.loading
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

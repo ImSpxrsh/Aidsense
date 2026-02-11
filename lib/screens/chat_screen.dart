@@ -11,7 +11,7 @@ final GOOGLE_PLACES = dotenv.env['MAPS_API_KEY'];
 class ChatScreen extends StatefulWidget {
   final Resource? initialResource;
   final bool showAppBar;
-  final List<Resource>? resources; // <-- Add this
+  final List<Resource>? resources;
 
   const ChatScreen({
     super.key,
@@ -74,7 +74,6 @@ class _ChatScreenState extends State<ChatScreen> {
           'Failed to get response: ${response.statusCode} ${response.body}');
     }
 
-    // Ensure a return for all other cases
     return "Sorry, I couldn't generate a response. Try asking something else.";
   }
 
@@ -119,6 +118,44 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _messageController.clear();
     _scrollToBottom();
+
+    // Check if message matches a quick suggestion intent
+    final lowerMessage = message.toLowerCase();
+    String? resourceType;
+    if (lowerMessage.contains('food')) {
+      resourceType = 'food';
+    } else if (lowerMessage.contains('shelter')) {
+      resourceType = 'shelter';
+    } else if (lowerMessage.contains('medical') ||
+        lowerMessage.contains('doctor') ||
+        lowerMessage.contains('clinic')) {
+      resourceType = 'clinic';
+    } else if (lowerMessage.contains('mental')) {
+      resourceType = 'mental';
+    }
+
+    if (resourceType != null) {
+      // Fetch top 5 resources of this type
+      final resources =
+          widget.resources ?? await _resourceService.fetchResourcesOnce();
+      final matches = resources
+          .where((r) => r.type.toLowerCase().contains(resourceType!))
+          .take(5)
+          .toList();
+      setState(() {
+        _messages.add(ChatMessage(
+          text: matches.isNotEmpty
+              ? 'Here are the nearest $resourceType resources:'
+              : 'Sorry, I could not find any $resourceType resources nearby.',
+          isUser: false,
+          timestamp: DateTime.now(),
+          suggestedResources: matches,
+        ));
+        _isTyping = false;
+      });
+      _scrollToBottom();
+      return;
+    }
 
     final response = await _processUserMessage(message);
 
@@ -172,13 +209,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<ChatResponse> _processUserMessage(String message) async {
     final lowerMessage = message.toLowerCase().trim();
-    // Use real resources if provided
     final resources =
         widget.resources ?? await _resourceService.fetchResourcesOnce();
-    print("Fetched ${resources.length} resources from service"); // DEBUG
+    print("Fetched " + resources.length.toString() + " resources from service");
 
     final Set<Resource> suggestedResources = {};
-
     final Map<String, List<String>> explicitRequests = {
       'shelter': ['i need shelter'],
       'food': ['i need food'],
@@ -191,7 +226,10 @@ class _ChatScreenState extends State<ChatScreen> {
         if (lowerMessage.contains(phrase)) {
           final matched =
               resources.where((r) => r.type.toLowerCase().contains(type));
-          print("Matched ${matched.length} resources for $type"); // DEBUG
+          print("Matched " +
+              matched.length.toString() +
+              " resources for " +
+              type);
           suggestedResources.addAll(matched);
           break;
         }
@@ -199,21 +237,20 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     if (suggestedResources.isEmpty && resources.isNotEmpty) {
-      suggestedResources.addAll(resources.take(3));
-      print("No explicit match, fallback to first 3 resources"); // DEBUG
+      suggestedResources.addAll(resources.take(5));
+      print("No explicit match, fallback to first 5 resources");
     }
 
-    // Build GPT prompt
-    final gptPrompt = """
-User asked: "$message"
-About resource: "${widget.initialResource?.name ?? "general"}"
-Nearby resources found:
-${suggestedResources.map((r) => "- ${r.name} at ${r.address} (${r.type})").join("\n")}
-Respond helpfully and specifically about this resource.
-""";
-
+    final topResources = suggestedResources.take(5).toList();
     String gptResponse;
     try {
+      final gptPrompt = """
+User asked: \"$message\"
+About resource: \"${widget.initialResource?.name ?? "general"}\"
+Nearby resources found:
+${topResources.map((r) => "- ${r.name} at ${r.address} (${r.type})").join("\n")}
+Respond helpfully and specifically about this resource.
+""";
       gptResponse = await getGpt5NanoResponse([
         {"role": "user", "content": gptPrompt}
       ]);
@@ -223,12 +260,10 @@ Respond helpfully and specifically about this resource.
     }
 
     print(
-        "Returning ${suggestedResources.length} suggested resources"); // DEBUG
-    // Google Places + GPT integration
-
+        "Returning " + topResources.length.toString() + " suggested resources");
     return ChatResponse(
       text: gptResponse,
-      resources: suggestedResources.toList(),
+      resources: topResources,
     );
   }
 
@@ -257,6 +292,203 @@ Respond helpfully and specifically about this resource.
         );
       }
     });
+  }
+
+  Widget _buildQuickButton(String text, Color primary) {
+    return GestureDetector(
+      onTap: () => _sendMessage(text),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: primary.withAlpha(25),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: primary.withAlpha(76)),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: primary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(ChatMessage message, Color primary, bool isLast) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        bottom: isLast ? 40 : 16,
+        top: isLast ? 12 : 0,
+      ),
+      child: Column(
+        crossAxisAlignment:
+            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: message.isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
+            children: [
+              if (!message.isUser)
+                CircleAvatar(
+                  backgroundColor: primary.withAlpha(204),
+                  radius: 16,
+                  child: const Icon(Icons.smart_toy,
+                      color: Colors.white, size: 18),
+                ),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: message.isUser ? primary : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(16).copyWith(
+                      bottomRight:
+                          message.isUser ? const Radius.circular(4) : null,
+                      bottomLeft:
+                          !message.isUser ? const Radius.circular(4) : null,
+                    ),
+                  ),
+                  child: message.text == '__typing__'
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildTypingDot(0),
+                            const SizedBox(width: 4),
+                            _buildTypingDot(1),
+                            const SizedBox(width: 4),
+                            _buildTypingDot(2),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!message.isUser)
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.smart_toy,
+                                    color: primary,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'AI Assistant',
+                                    style: TextStyle(
+                                      color: primary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            if (!message.isUser) const SizedBox(height: 4),
+                            Text(
+                              message.text,
+                              style: TextStyle(
+                                color: message.isUser
+                                    ? Colors.white
+                                    : Colors.black87,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatTime(message.timestamp),
+                              style: TextStyle(
+                                color: message.isUser
+                                    ? Colors.white70
+                                    : Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+              if (message.isUser) const SizedBox(width: 8),
+              if (message.isUser)
+                CircleAvatar(
+                  backgroundColor: primary.withAlpha(204),
+                  radius: 16,
+                  child:
+                      const Icon(Icons.person, color: Colors.white, size: 18),
+                ),
+            ],
+          ),
+          if (message.suggestedResources != null &&
+              message.suggestedResources!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: message.suggestedResources!
+                    .map((resource) => _buildResourceCard(resource, primary))
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Customized quick suggestions per resource type
+  List<String> _getSuggestionsForType(String? type) {
+    switch (type) {
+      case 'food':
+        return [
+          'What are the hours?',
+          'Is there a food pantry nearby?',
+          'How do I get free meals?'
+        ];
+      case 'shelter':
+        return [
+          'Is there space available?',
+          'What do I need to bring?',
+          'How long can I stay?'
+        ];
+      case 'clinic':
+        return [
+          'What services are offered?',
+          'Do I need insurance?',
+          'What are the hours?'
+        ];
+      case 'mental':
+        return [
+          'Is there a counselor available?',
+          'How do I get support?',
+          'Is it confidential?'
+        ];
+      default:
+        return [
+          'I need food',
+          'I need shelter',
+          'I need medical help',
+          'I need mental health support',
+        ];
+    }
+  }
+
+  Widget _buildQuickSuggestions(Color primary) {
+    String? type;
+    if (widget.initialResource != null) {
+      type = widget.initialResource!.type.toLowerCase();
+    }
+    final suggestions = _getSuggestionsForType(type);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final s in suggestions.take(3)) ...[
+            _buildQuickButton(s, primary),
+            const SizedBox(width: 8),
+          ]
+        ],
+      ),
+    );
   }
 
   @override
@@ -290,30 +522,19 @@ Respond helpfully and specifically about this resource.
                 padding: const EdgeInsets.all(16),
                 itemCount: _messages.length + (_isTyping ? 1 : 0),
                 itemBuilder: (context, index) {
-                  if (index == _messages.length) {
-                    return _buildTypingIndicator();
+                  if (_isTyping && index == _messages.length) {
+                    // Show typing animation as a chat bubble (AI style)
+                    return _buildTypingBubble(primary);
                   }
-                  return _buildMessageBubble(_messages[index], primary);
+                  return _buildMessageBubble(
+                      _messages[index], primary, index == _messages.length - 1);
                 },
               ),
             ),
-            // Quick action buttons
+            // Quick action buttons (scrollable)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildQuickButton("I need food", primary),
-                    const SizedBox(width: 8),
-                    _buildQuickButton("I need shelter", primary),
-                    const SizedBox(width: 8),
-                    _buildQuickButton("I need medical help", primary),
-                    const SizedBox(width: 8),
-                    _buildQuickButton("I need mental health support", primary),
-                  ],
-                ),
-              ),
+              child: _buildQuickSuggestions(primary),
             ),
             Container(
               padding: const EdgeInsets.all(16),
@@ -372,119 +593,38 @@ Respond helpfully and specifically about this resource.
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message, Color primary) {
-    // Check if this is the first welcome message
-    final isWelcomeMessage = !message.isUser &&
-        message.text.contains("Hello! I'm here to help you find resources");
-
+  Widget _buildTypingBubble(Color primary) {
+    // This is a chat bubble styled like an AI message, but only shows the animated dots
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment:
-            message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: message.isUser
-                ? MainAxisAlignment.end
-                : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!message.isUser)
-                CircleAvatar(
-                  backgroundColor: primary.withAlpha(25),
-                  radius: 16,
-                  child: Icon(Icons.smart_toy, color: primary, size: 18),
-                ),
-              if (!message.isUser) const SizedBox(width: 8),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isWelcomeMessage
-                        ? const Color.fromARGB(255, 255, 167,
-                            167) // Highlighted red for welcome message
-                        : message.isUser
-                            ? primary
-                            : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(16).copyWith(
-                      bottomRight:
-                          message.isUser ? const Radius.circular(4) : null,
-                      bottomLeft:
-                          !message.isUser ? const Radius.circular(4) : null,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!message.isUser && !isWelcomeMessage)
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.smart_toy,
-                              color: primary,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'AI Assistant',
-                              style: TextStyle(
-                                color: primary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (!message.isUser && !isWelcomeMessage)
-                        const SizedBox(height: 4),
-                      Text(
-                        message.text,
-                        style: TextStyle(
-                          color: message.isUser
-                              ? Colors.white
-                              : isWelcomeMessage
-                                  ? Colors.white
-                                  : Colors.black87,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatTime(message.timestamp),
-                        style: TextStyle(
-                          color: message.isUser
-                              ? Colors.white70
-                              : isWelcomeMessage
-                                  ? Colors.white70
-                                  : Colors.grey[600],
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (message.isUser) const SizedBox(width: 8),
-              if (message.isUser)
-                CircleAvatar(
-                  backgroundColor: primary.withAlpha(204),
-                  radius: 16,
-                  child:
-                      const Icon(Icons.person, color: Colors.white, size: 18),
-                ),
-            ],
+          CircleAvatar(
+            backgroundColor: primary.withAlpha(25),
+            radius: 16,
+            child: Icon(Icons.smart_toy, color: primary, size: 18),
           ),
-          if (message.suggestedResources != null &&
-              message.suggestedResources!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: message.suggestedResources!
-                    .map((resource) => _buildResourceCard(resource, primary))
-                    .toList(),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(16).copyWith(
+                bottomLeft: const Radius.circular(4),
               ),
             ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                AnimatedChatDot(index: 0),
+                SizedBox(width: 4),
+                AnimatedChatDot(index: 1),
+                SizedBox(width: 4),
+                AnimatedChatDot(index: 2),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -506,8 +646,7 @@ Respond helpfully and specifically about this resource.
   }
 
   Widget _buildResourceCard(Resource resource, Color primary) {
-    print(
-        "Building resource card: ${resource.name}, ${resource.type}"); // DEBUG
+    print("Building resource card: ${resource.name}, ${resource.type}");
     return Card(
       margin: const EdgeInsets.only(bottom: 8, left: 40),
       child: ListTile(
@@ -544,45 +683,6 @@ Respond helpfully and specifically about this resource.
     );
   }
 
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: const Color(0xFFF48A8A).withAlpha(25),
-            radius: 16,
-            child:
-                const Icon(Icons.smart_toy, color: Color(0xFFF48A8A), size: 18),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-                bottomLeft: Radius.circular(4),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTypingDot(0),
-                const SizedBox(width: 4),
-                _buildTypingDot(1),
-                const SizedBox(width: 4),
-                _buildTypingDot(2),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTypingDot(int index) {
     return AnimatedContainer(
       duration: Duration(milliseconds: 600 + (index * 200)),
@@ -592,28 +692,6 @@ Respond helpfully and specifically about this resource.
       decoration: BoxDecoration(
         color: Colors.grey[400],
         borderRadius: BorderRadius.circular(4),
-      ),
-    );
-  }
-
-  Widget _buildQuickButton(String text, Color primary) {
-    return GestureDetector(
-      onTap: () => _sendMessage(text),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: primary.withAlpha(25),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: primary.withAlpha(76)),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: primary,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
       ),
     );
   }
@@ -654,4 +732,66 @@ class ChatResponse {
     required this.text,
     required this.resources,
   });
+}
+
+class AnimatedChatDot extends StatefulWidget {
+  final int index;
+  const AnimatedChatDot({super.key, required this.index});
+
+  @override
+  State<AnimatedChatDot> createState() => _AnimatedChatDotState();
+}
+
+class _AnimatedChatDotState extends State<AnimatedChatDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 900),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0, end: -10).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Interval(
+          widget.index * 0.2,
+          1.0,
+          curve: Curves.easeInOut,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, _animation.value),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF48A8A),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

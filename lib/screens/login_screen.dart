@@ -38,12 +38,13 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.user != null) {
+        await UserData.loadFromSupabase();
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Login successful')));
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login failed')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Login failed')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context)

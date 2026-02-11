@@ -14,22 +14,24 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Always load .env before anything else
   try {
-    // Load .env from root
     await dotenv.load(fileName: ".env");
   } catch (e) {
     print('Error loading .env: $e');
   }
 
-  try {
-    await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-    );
-    print('Supabase initialized successfully');
-  } catch (e) {
-    print('Error initializing Supabase: $e');
+  // Always initialize Supabase before runApp
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+  if (supabaseUrl == null || supabaseAnonKey == null) {
+    throw Exception('SUPABASE_URL or SUPABASE_ANON_KEY is not set in .env');
   }
+  await Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+  );
+  print('Supabase initialized successfully');
 
   runApp(const AidSenseApp());
 }

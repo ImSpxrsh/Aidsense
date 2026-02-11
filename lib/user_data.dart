@@ -1,5 +1,6 @@
 // Simple in-memory user data storage
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserData {
   static String? _fullName;
@@ -124,5 +125,42 @@ class UserData {
     _isLoggedIn = prefs.getString('isLoggedIn') == 'true';
     final favs = prefs.getString('favorites') ?? '';
     _favorites = favs.isNotEmpty ? favs.split(',') : [];
+  }
+
+  // Supabase profile fetch
+  static Future<void> loadFromSupabase() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final response = await Supabase.instance.client
+        .from('profiles')
+        .select()
+        .eq('uid', user.id)
+        .single();
+    // response is always non-null, so just check fields
+    _fullName = response['fullName'] ?? 'User';
+    _email = response['email'] ?? 'user@example.com';
+    _mobile = response['phone'] ?? '';
+    _favorites =
+        (response['favorites'] as List?)?.map((e) => e.toString()).toList() ??
+            [];
+    _isLoggedIn = true;
+  }
+
+  static Future<void> saveToSupabase() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    await Supabase.instance.client.from('profiles').upsert({
+      'uid': user.id,
+      'fullName': _fullName ?? '',
+      'email': _email ?? '',
+      'phone': _mobile ?? '',
+      'favorites': _favorites,
+    });
+  }
+
+  static Future<void> clearSupabaseProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    await Supabase.instance.client.from('profiles').delete().eq('uid', user.id);
   }
 }
