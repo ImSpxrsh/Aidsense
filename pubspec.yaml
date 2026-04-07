@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.5.0
+  shared_preferences: ^2.5.4
 
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
@@ -22,6 +23,7 @@ dependencies:
   flutter_dotenv: ^6.0.0
   flutter_svg: ^2.0.10+1
   url_launcher: ^6.2.1
+  google_sign_in: ^6.2.2
 
 
 dev_dependencies:

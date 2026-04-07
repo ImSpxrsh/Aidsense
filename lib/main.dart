@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'user_data.dart';
 import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -32,6 +33,20 @@ Future<void> main() async {
     anonKey: supabaseAnonKey,
   );
   print('Supabase initialized successfully');
+
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+    if (data.event == AuthChangeEvent.signedIn && data.session != null) {
+      try {
+        await UserData.ensureProfileRow();
+        await UserData.loadFromSupabase();
+      } catch (e) {
+        debugPrint('Auth signedIn profile sync: $e');
+      }
+    }
+    if (data.event == AuthChangeEvent.signedOut) {
+      UserData.clearUser();
+    }
+  });
 
   runApp(const AidSenseApp());
 }

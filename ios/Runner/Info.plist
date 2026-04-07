@@ -59,5 +59,20 @@
     	<string>_http._tcp</string>
 	</array>
 
+	<!-- Supabase OAuth (Google) deep link: com.aidsense.app://login-callback/ -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.aidsense.app.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.aidsense.app</string>
+			</array>
+		</dict>
+	</array>
+
 </dict>
 </plist>

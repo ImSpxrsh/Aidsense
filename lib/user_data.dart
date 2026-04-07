@@ -127,35 +127,154 @@ class UserData {
     _favorites = favs.isNotEmpty ? favs.split(',') : [];
   }
 
+  static String? _firstNonEmptyString(Map<String, dynamic>? map, List<String> keys) {
+    if (map == null) return null;
+    for (final k in keys) {
+      final v = map[k];
+      if (v == null) continue;
+      final s = v.toString().trim();
+      if (s.isNotEmpty) return s;
+    }
+    return null;
+  }
+
+  static Map<String, dynamic> _profileUpsertPayload({
+    required String userId,
+    required String fullName,
+    required String email,
+    required String phone,
+    required List<String> favorites,
+  }) {
+    return {
+      'uid': userId,
+      'fullName': fullName,
+      'email': email,
+      'phone': phone,
+      'favorites': favorites,
+    };
+  }
+
+  /// Ensures a `profiles` row exists (e.g. after Google OAuth). Uses same columns as email signup.
+  static Future<void> ensureProfileRow() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final meta = user.userMetadata ?? {};
+    final fromMeta = _firstNonEmptyString(meta, ['full_name', 'fullName', 'name', 'given_name']);
+    final email = user.email ?? '';
+    final displayName = fromMeta ??
+        (email.isNotEmpty ? email.split('@').first : null) ??
+        'User';
+    final phone = _firstNonEmptyString(meta, ['phone']) ?? '';
+
+    Map<String, dynamic>? existing;
+    try {
+      existing = await Supabase.instance.client
+          .from('profiles')
+          .select('uid')
+          .eq('uid', user.id)
+          .maybeSingle();
+    } catch (_) {
+      try {
+        existing = await Supabase.instance.client
+            .from('profiles')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle();
+      } catch (_) {
+        existing = null;
+      }
+    }
+    if (existing != null) return;
+
+    try {
+      await Supabase.instance.client.from('profiles').upsert(
+            _profileUpsertPayload(
+              userId: user.id,
+              fullName: displayName,
+              email: email,
+              phone: phone,
+              favorites: const [],
+            ),
+          );
+    } catch (_) {
+      // RLS or schema mismatch — local/session state is still valid.
+    }
+  }
+
   // Supabase profile fetch
   static Future<void> loadFromSupabase() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
-    final response = await Supabase.instance.client
-        .from('profiles')
-        .select()
-        .eq('uid', user.id)
-        .single();
-    // response is always non-null, so just check fields
-    _fullName = response['fullName'] ?? 'User';
-    _email = response['email'] ?? 'user@example.com';
-    _mobile = response['phone'] ?? '';
-    _favorites =
-        (response['favorites'] as List?)?.map((e) => e.toString()).toList() ??
-            [];
+
+    Map<String, dynamic>? response;
+    try {
+      response = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('uid', user.id)
+          .maybeSingle();
+      response ??= await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+    } catch (_) {
+      response = null;
+    }
+
+    final meta = user.userMetadata ?? {};
+
+    if (response != null) {
+      _fullName = _firstNonEmptyString(response, ['fullName', 'full_name']) ??
+          _firstNonEmptyString(meta, ['full_name', 'fullName', 'name']) ??
+          (user.email != null && user.email!.isNotEmpty
+              ? user.email!.split('@').first
+              : 'User');
+      _email = _firstNonEmptyString(response, ['email']) ??
+          user.email ??
+          'user@example.com';
+      _mobile = _firstNonEmptyString(response, ['phone', 'phone_number']) ??
+          _firstNonEmptyString(meta, ['phone']) ??
+          '';
+      _dateOfBirth = _firstNonEmptyString(response, ['dateOfBirth', 'date_of_birth']) ??
+          _firstNonEmptyString(meta, ['date_of_birth', 'dateOfBirth']) ??
+          '';
+      _favorites =
+          (response['favorites'] as List?)?.map((e) => e.toString()).toList() ??
+              [];
+    } else {
+      _fullName = _firstNonEmptyString(meta, ['full_name', 'fullName', 'name']) ??
+          (user.email != null && user.email!.isNotEmpty
+              ? user.email!.split('@').first
+              : 'User');
+      _email = user.email ?? 'user@example.com';
+      _mobile = _firstNonEmptyString(meta, ['phone']) ?? '';
+      _dateOfBirth =
+          _firstNonEmptyString(meta, ['date_of_birth', 'dateOfBirth']) ?? '';
+      _favorites = [];
+    }
+
     _isLoggedIn = true;
+    await _saveToPrefs('fullName', _fullName ?? '');
+    await _saveToPrefs('email', _email ?? '');
+    await _saveToPrefs('mobile', _mobile ?? '');
+    await _saveToPrefs('dateOfBirth', _dateOfBirth ?? '');
+    await _saveToPrefs('isLoggedIn', 'true');
+    await _saveToPrefs('favorites', _favorites.join(','));
   }
 
   static Future<void> saveToSupabase() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
-    await Supabase.instance.client.from('profiles').upsert({
-      'uid': user.id,
-      'fullName': _fullName ?? '',
-      'email': _email ?? '',
-      'phone': _mobile ?? '',
-      'favorites': _favorites,
-    });
+    await Supabase.instance.client.from('profiles').upsert(
+          _profileUpsertPayload(
+            userId: user.id,
+            fullName: _fullName ?? '',
+            email: _email ?? '',
+            phone: _mobile ?? '',
+            favorites: _favorites,
+          ),
+        );
   }
 
   static Future<void> clearSupabaseProfile() async {

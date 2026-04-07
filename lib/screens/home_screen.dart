@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 
@@ -32,6 +33,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadUserData();
     _loadNearbyPlaces();
+    _refreshProfileFromSupabase();
+  }
+
+  Future<void> _refreshProfileFromSupabase() async {
+    if (Supabase.instance.client.auth.currentUser == null) return;
+    await UserData.loadFromSupabase();
+    if (mounted) {
+      setState(() {
+        userName = UserData.fullName;
+        userEmail = UserData.email;
+      });
+    }
   }
 
   void _loadUserData() {
@@ -162,8 +175,11 @@ class _HomeScreenState extends State<HomeScreen> {
               );
 
               if (shouldLogout == true && mounted) {
+                await Supabase.instance.client.auth.signOut();
                 UserData.clearUser();
-                Navigator.pushReplacementNamed(context, '/');
+                if (context.mounted) {
+                  Navigator.pushReplacementNamed(context, '/');
+                }
               }
             },
           ),
@@ -645,7 +661,19 @@ class _ProfileTabState extends State<_ProfileTab> {
                             email: emailController.text.trim(),
                           );
 
-                          await Future.delayed(const Duration(seconds: 1));
+                          try {
+                            await UserData.saveToSupabase();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Could not sync profile: $e'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            }
+                          }
+
                           setState(() => isLoading = false);
 
                           if (context.mounted) {

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../google_auth.dart';
 import '../user_data.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -17,29 +20,94 @@ class _SignupScreenState extends State<SignupScreen> {
   final _dateOfBirth = TextEditingController();
   bool _loading = false;
   bool _obscurePassword = true;
+  StreamSubscription<AuthState>? _authSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSub =
+        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (!mounted || data.session == null) return;
+      if (data.event != AuthChangeEvent.signedIn) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final route = ModalRoute.of(context);
+        if (route == null || !route.isCurrent) return;
+        Navigator.pushReplacementNamed(context, '/home');
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _loading = true);
+    try {
+      await signInWithGoogleForSupabase();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Google sign-in: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   Future<void> _signup() async {
     setState(() => _loading = true);
     try {
-      // Sign up with Supabase
+      // Sign up with Supabase (metadata is available to triggers / load fallbacks)
       final response = await Supabase.instance.client.auth.signUp(
         email: _email.text.trim(),
         password: _pass.text.trim(),
+        data: {
+          'full_name': _fullName.text.trim(),
+          'phone': _mobileNumber.text.trim(),
+          'date_of_birth': _dateOfBirth.text.trim(),
+        },
       );
 
       if (response.user != null) {
-        // Create profile in Supabase
-        await Supabase.instance.client.from('profiles').upsert({
-          'uid': response.user!.id,
-          'fullName': _fullName.text.trim(),
-          'email': _email.text.trim(),
-          'phone': _mobileNumber.text.trim(),
-          'favorites': [],
-        });
-        await UserData.loadFromSupabase();
+        final dob = _dateOfBirth.text.trim();
+        UserData.saveUser(
+          fullName: _fullName.text.trim(),
+          email: _email.text.trim(),
+          mobile: _mobileNumber.text.trim(),
+          dateOfBirth: dob,
+        );
+
+        // Without a session (e.g. "confirm email" enabled), RLS usually blocks writes — keep local data above.
+        if (response.session != null) {
+          try {
+            await Supabase.instance.client.from('profiles').upsert({
+              'uid': response.user!.id,
+              'fullName': _fullName.text.trim(),
+              'email': _email.text.trim(),
+              'phone': _mobileNumber.text.trim(),
+              'favorites': [],
+            });
+          } catch (e) {
+            debugPrint('Profile upsert after signup: $e');
+          }
+          await UserData.loadFromSupabase();
+        }
+
+        final needsConfirm = response.session == null;
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account created successfully!')));
-        Navigator.pushReplacementNamed(context, '/home');
+          SnackBar(
+            content: Text(
+              needsConfirm
+                  ? 'Check your email to confirm your account, then sign in.'
+                  : 'Account created successfully!',
+            ),
+          ),
+        );
+        Navigator.pushReplacementNamed(context, needsConfirm ? '/login' : '/home');
       } else {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Signup failed')));
@@ -262,6 +330,34 @@ class _SignupScreenState extends State<SignupScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Expanded(child: Divider()),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'or',
+                    style: TextStyle(color: const Color(0xFF718096)),
+                  ),
+                ),
+                const Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: _loading ? null : _signInWithGoogle,
+              icon: const Icon(Icons.login, size: 22),
+              label: const Text('Continue with Google'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                foregroundColor: const Color(0xFF2D3748),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 24),

@@ -24,11 +24,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize with current user data (in a real app, you'd load from Firebase/storage)
-    _fullNameController.text = 'Current User'; // Placeholder
-    _emailController.text = 'user@example.com'; // Placeholder
-    _phoneController.text = ''; // Placeholder
-    _zipCodeController.text = '07302'; // Default Jersey City zip
+    _fullNameController.text = UserData.fullName;
+    _emailController.text = UserData.email;
+    _phoneController.text = UserData.mobile;
+    _zipCodeController.text = '07302';
   }
 
   @override
