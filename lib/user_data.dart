@@ -12,7 +12,7 @@ class UserData {
 
   // Getters
   static String get fullName => _fullName ?? 'User';
-  static String get email => _email ?? 'user@example.com';
+  static String get email => _email ?? 'support@aidsense.app';
   static String get mobile => _mobile ?? '';
   static String get dateOfBirth => _dateOfBirth ?? '';
   static bool get isLoggedIn => _isLoggedIn;
@@ -119,7 +119,7 @@ class UserData {
   static Future<void> loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _fullName = prefs.getString('fullName') ?? 'User';
-    _email = prefs.getString('email') ?? 'user@example.com';
+    _email = prefs.getString('email') ?? 'support@aidsense.app';
     _mobile = prefs.getString('mobile') ?? '';
     _dateOfBirth = prefs.getString('dateOfBirth') ?? '';
     _isLoggedIn = prefs.getString('isLoggedIn') == 'true';
@@ -127,7 +127,8 @@ class UserData {
     _favorites = favs.isNotEmpty ? favs.split(',') : [];
   }
 
-  static String? _firstNonEmptyString(Map<String, dynamic>? map, List<String> keys) {
+  static String? _firstNonEmptyString(
+      Map<String, dynamic>? map, List<String> keys) {
     if (map == null) return null;
     for (final k in keys) {
       final v = map[k];
@@ -159,7 +160,8 @@ class UserData {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
     final meta = user.userMetadata ?? {};
-    final fromMeta = _firstNonEmptyString(meta, ['full_name', 'fullName', 'name', 'given_name']);
+    final fromMeta = _firstNonEmptyString(
+        meta, ['full_name', 'fullName', 'name', 'given_name']);
     final email = user.email ?? '';
     final displayName = fromMeta ??
         (email.isNotEmpty ? email.split('@').first : null) ??
@@ -232,22 +234,24 @@ class UserData {
               : 'User');
       _email = _firstNonEmptyString(response, ['email']) ??
           user.email ??
-          'user@example.com';
+          'support@aidsense.app';
       _mobile = _firstNonEmptyString(response, ['phone', 'phone_number']) ??
           _firstNonEmptyString(meta, ['phone']) ??
           '';
-      _dateOfBirth = _firstNonEmptyString(response, ['dateOfBirth', 'date_of_birth']) ??
-          _firstNonEmptyString(meta, ['date_of_birth', 'dateOfBirth']) ??
-          '';
+      _dateOfBirth =
+          _firstNonEmptyString(response, ['dateOfBirth', 'date_of_birth']) ??
+              _firstNonEmptyString(meta, ['date_of_birth', 'dateOfBirth']) ??
+              '';
       _favorites =
           (response['favorites'] as List?)?.map((e) => e.toString()).toList() ??
               [];
     } else {
-      _fullName = _firstNonEmptyString(meta, ['full_name', 'fullName', 'name']) ??
-          (user.email != null && user.email!.isNotEmpty
-              ? user.email!.split('@').first
-              : 'User');
-      _email = user.email ?? 'user@example.com';
+      _fullName =
+          _firstNonEmptyString(meta, ['full_name', 'fullName', 'name']) ??
+              (user.email != null && user.email!.isNotEmpty
+                  ? user.email!.split('@').first
+                  : 'User');
+      _email = user.email ?? 'support@aidsense.app';
       _mobile = _firstNonEmptyString(meta, ['phone']) ?? '';
       _dateOfBirth =
           _firstNonEmptyString(meta, ['date_of_birth', 'dateOfBirth']) ?? '';

@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_riverpod: ^2.5.1
   supabase_flutter: ^2.5.0
   shared_preferences: ^2.5.4
 
@@ -51,4 +52,5 @@ flutter:
     - assets/images/food_bank_marker.png
     - assets/images/person_marker.png
     - assets/images/mental_health_marker.png
+    - assets/images/google_logo.png
     - .env

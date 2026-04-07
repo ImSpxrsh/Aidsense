@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pc = PageController();
   int _page = 0;
 
@@ -38,7 +40,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         Padding(
           padding: const EdgeInsets.only(right: 12.0, bottom: 6.0),
           child: TextButton(
-            onPressed: () => Navigator.pushReplacementNamed(context, '/'),
+            onPressed: () async {
+              await ref.read(onboardingControllerProvider).markComplete();
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/');
+              }
+            },
             style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 minimumSize: Size.zero,
@@ -145,7 +152,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   duration: const Duration(milliseconds: 300),
                                   curve: Curves.easeInOut);
                             } else {
-                              Navigator.pushReplacementNamed(context, '/');
+                              ref
+                                  .read(onboardingControllerProvider)
+                                  .markComplete()
+                                  .then((_) {
+                                if (context.mounted) {
+                                  Navigator.pushReplacementNamed(context, '/');
+                                }
+                              });
                             }
                           },
                           style: ElevatedButton.styleFrom(

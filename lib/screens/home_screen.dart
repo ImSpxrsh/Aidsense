@@ -1,11 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../user_data.dart';
 import '../models.dart';
+import '../mock_resources.dart';
 import 'chat_screen.dart';
+import 'resource_detail_screen.dart';
 import '../google_maps.dart';
 import '../screens/places_service.dart';
 
@@ -16,29 +22,81 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  static const String _resourceCacheKey = 'nearby_resources_cache_v1';
+  static const String _lastKnownPositionCacheKey =
+      'last_known_user_position_v1';
+  static const LatLng _defaultFallbackPosition =
+      LatLng(40.7128, -74.0060); // NYC fallback for emulator timeouts
+
   int _tab = 0;
 
   String userName = 'User';
-  String userEmail = 'user@example.com';
+  String userEmail = 'support@aidsense.app';
 
   final GlobalKey<_ProfileTabState> _profileKey = GlobalKey<_ProfileTabState>();
 
   // Shared resource state
   List<Resource> _resources = [];
   bool _loading = true;
+  LatLng? _userPosition;
+  bool _refreshingOnResume = false;
+  DateTime? _lastResumeRefreshAt;
+
+  bool _isPermissionGranted(PermissionStatus perm) {
+    return perm == PermissionStatus.granted ||
+        perm.toString().contains('grantedLimited');
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUserData();
-    _loadNearbyPlaces();
+    _bootstrapResources();
     _refreshProfileFromSupabase();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshNearbyOnResume();
+    }
+  }
+
+  Future<void> _refreshNearbyOnResume() async {
+    if (_refreshingOnResume) return;
+
+    final now = DateTime.now();
+    final last = _lastResumeRefreshAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 10)) {
+      return;
+    }
+
+    _refreshingOnResume = true;
+    _lastResumeRefreshAt = now;
+    try {
+      await _loadNearbyPlaces();
+    } finally {
+      _refreshingOnResume = false;
+    }
+  }
+
+  Future<void> _bootstrapResources() async {
+    await _loadCachedResources();
+    await _loadNearbyPlaces();
   }
 
   Future<void> _refreshProfileFromSupabase() async {
     if (Supabase.instance.client.auth.currentUser == null) return;
     await UserData.loadFromSupabase();
+    FavoritesService().syncFromUserData();
     if (mounted) {
       setState(() {
         userName = UserData.fullName;
@@ -54,85 +112,205 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _loadCachedResources() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final cachedResourcesRaw = prefs.getString(_resourceCacheKey);
+    if (cachedResourcesRaw != null && cachedResourcesRaw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(cachedResourcesRaw) as List<dynamic>;
+        final cachedResources = decoded
+            .whereType<Map<String, dynamic>>()
+            .map((entry) => Resource.fromMap(
+                  (entry['id'] ?? '').toString(),
+                  entry,
+                ))
+            .where((resource) => resource.id.isNotEmpty)
+            .toList();
+
+        if (cachedResources.isNotEmpty && mounted) {
+          setState(() {
+            _resources = cachedResources;
+            _loading = false;
+          });
+        }
+      } catch (_) {
+        // Ignore cache parse issues and continue with a live fetch.
+      }
+    }
+
+    final cachedPositionRaw = prefs.getString(_lastKnownPositionCacheKey);
+    if (cachedPositionRaw != null && cachedPositionRaw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(cachedPositionRaw) as Map<String, dynamic>;
+        final latitude = (decoded['latitude'] as num?)?.toDouble();
+        final longitude = (decoded['longitude'] as num?)?.toDouble();
+        if (latitude != null && longitude != null && mounted) {
+          setState(() {
+            _userPosition = LatLng(latitude, longitude);
+          });
+        }
+      } catch (_) {
+        // Ignore cached position parse issues.
+      }
+    }
+  }
+
+  Future<void> _persistResourceCache(List<Resource> resources) async {
+    final prefs = await SharedPreferences.getInstance();
+    final payload = resources
+        .map(
+          (resource) => {
+            'id': resource.id,
+            ...resource.toMap(),
+          },
+        )
+        .toList();
+    await prefs.setString(_resourceCacheKey, jsonEncode(payload));
+  }
+
+  Future<void> _persistLastKnownPosition(LatLng position) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _lastKnownPositionCacheKey,
+      jsonEncode({
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+      }),
+    );
+  }
+
   Future<void> _loadNearbyPlaces() async {
-    setState(() => _loading = true);
-    final location = Location();
-    bool enabled = await location.serviceEnabled();
-    if (!enabled) {
-      enabled = await location.requestService();
-      if (!enabled) {
-        setState(() => _loading = false);
-        return;
-      }
+    if (mounted) {
+      setState(() => _loading = _resources.isEmpty);
     }
-    PermissionStatus perm = await location.hasPermission();
-    if (perm == PermissionStatus.denied) {
-      perm = await location.requestPermission();
-      if (perm != PermissionStatus.granted) {
-        setState(() => _loading = false);
-        return;
-      }
-    }
-    final loc = await location.getLocation();
-    if (loc.latitude == null || loc.longitude == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    final pos = LatLng(loc.latitude!, loc.longitude!);
-    final List<Resource> all = [];
-    const categories = ['shelter', 'food', 'clinic', 'Mental Health'];
-    final keywordMap = {
-      'food': 'food bank soup kitchen',
-      'shelter': 'homeless shelter',
-      'clinic': 'free clinic community health',
-      'Mental Health': 'mental health counseling therapy',
-    };
-    for (final c in categories) {
-      final places = await PlacesService.fetchNearby(
-        lat: pos.latitude,
-        lng: pos.longitude,
-        keyword: keywordMap[c]!,
-      );
-      final detailedPlaces = await Future.wait(
-        places.map((p) => PlacesService.fetchDetails(p)),
-      );
-      all.addAll(
-        detailedPlaces.map((p) {
-          List<String> tags;
-          switch (c) {
-            case 'shelter':
-              tags = ['Housing', 'Assistance'];
-              break;
-            case 'food':
-              tags = ['Groceries', 'Meals'];
-              break;
-            case 'clinic':
-              tags = ['Medical', 'Care'];
-              break;
-            case 'Mental Health':
-              tags = ['Counseling', 'Therapy', 'Support'];
-              break;
-            default:
-              tags = [c];
+    try {
+      final location = Location();
+      LatLng pos = _userPosition ?? _defaultFallbackPosition;
+
+      try {
+        bool enabled =
+            await location.serviceEnabled().timeout(const Duration(seconds: 5));
+        if (!enabled) {
+          enabled = await location
+              .requestService()
+              .timeout(const Duration(seconds: 8));
+          if (!enabled) {
+            debugPrint(
+                'Location service unavailable, using fallback position.');
           }
-          return Resource(
-            id: p.placeId,
-            name: p.name,
-            type: c,
-            address: p.address,
-            latitude: p.lat,
-            longitude: p.lng,
-            phone: p.phone,
-            website: p.website,
-            tags: tags,
+        }
+
+        PermissionStatus perm =
+            await location.hasPermission().timeout(const Duration(seconds: 5));
+        if (perm == PermissionStatus.denied) {
+          perm = await location
+              .requestPermission()
+              .timeout(const Duration(seconds: 8));
+        }
+
+        if (_isPermissionGranted(perm) && enabled) {
+          final loc = await location.getLocation().timeout(
+                const Duration(seconds: 20),
+              );
+          if (loc.latitude != null && loc.longitude != null) {
+            pos = LatLng(loc.latitude!, loc.longitude!);
+          }
+        }
+      } on TimeoutException {
+        debugPrint(
+          'Location timed out, continuing with cached/default position.',
+        );
+      } catch (e) {
+        debugPrint('Location fetch failed, continuing with fallback: $e');
+      }
+
+      final List<Resource> all = [];
+      const categories = ['shelter', 'food', 'clinic', 'Mental Health'];
+      final keywordMap = {
+        'food': 'food bank soup kitchen',
+        'shelter': 'homeless shelter',
+        'clinic': 'free clinic community health',
+        'Mental Health': 'mental health counseling therapy',
+      };
+
+      for (final c in categories) {
+        try {
+          final places = await PlacesService.fetchNearby(
+            lat: pos.latitude,
+            lng: pos.longitude,
+            keyword: keywordMap[c]!,
           );
-        }),
-      );
+          final detailedPlaces = await Future.wait(
+            places.take(10).map((p) => PlacesService.fetchDetails(p)),
+          );
+          all.addAll(
+            detailedPlaces.map((p) {
+              List<String> tags;
+              switch (c) {
+                case 'shelter':
+                  tags = ['Housing', 'Assistance'];
+                  break;
+                case 'food':
+                  tags = ['Groceries', 'Meals'];
+                  break;
+                case 'clinic':
+                  tags = ['Medical', 'Care'];
+                  break;
+                case 'Mental Health':
+                  tags = ['Counseling', 'Therapy', 'Support'];
+                  break;
+                default:
+                  tags = [c];
+              }
+              return Resource(
+                id: p.placeId,
+                name: p.name,
+                type: c,
+                address: p.address,
+                latitude: p.lat,
+                longitude: p.lng,
+                phone: p.phone,
+                website: p.website,
+                tags: tags,
+              );
+            }),
+          );
+        } catch (e) {
+          debugPrint('Category load failed ($c): $e');
+        }
+      }
+
+      // Keep favorites displayable across app restarts once resources are known.
+      FavoritesService().registerResources(all);
+
+      if (mounted) {
+        setState(() {
+          _userPosition = pos;
+          _resources = all;
+          _loading = false;
+        });
+      }
+      await _persistLastKnownPosition(pos);
+      await _persistResourceCache(all);
+
+      if (all.isEmpty && mounted && _resources.isEmpty) {
+        setState(() {
+          _resources = mockResources;
+        });
+      }
+    } catch (e) {
+      debugPrint('Nearby load failed: $e');
+      if (mounted && _resources.isEmpty) {
+        setState(() {
+          _resources = mockResources;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
-    setState(() {
-      _resources = all;
-      _loading = false;
-    });
   }
 
   @override
@@ -188,7 +366,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _tab,
         children: [
-          _MapAndListTab(resources: _resources, loading: _loading),
+          _MapAndListTab(
+            resources: _resources,
+            loading: _loading,
+            userPosition: _userPosition,
+          ),
           ChatScreen(resources: _resources),
           _ProfileTab(
               key: _profileKey,
@@ -222,8 +404,12 @@ class _HomeScreenState extends State<HomeScreen> {
 class _MapAndListTab extends StatefulWidget {
   final List<Resource> resources;
   final bool loading;
+  final LatLng? userPosition;
   const _MapAndListTab(
-      {Key? key, required this.resources, required this.loading})
+      {Key? key,
+      required this.resources,
+      required this.loading,
+      required this.userPosition})
       : super(key: key);
 
   @override
@@ -305,15 +491,12 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             resources: _filteredPlaces,
             searchQuery: _searchQuery,
             selectedFilter: _selectedFilter,
-            initialPosition: _filteredPlaces.isNotEmpty
-                ? LatLng(_filteredPlaces.first.latitude,
-                    _filteredPlaces.first.longitude)
-                : null,
+            initialPosition: widget.userPosition,
           ),
         ),
         Expanded(
           flex: 2,
-          child: widget.loading
+          child: widget.loading && widget.resources.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -368,10 +551,13 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(r.address.isNotEmpty
-                                    ? r.address
-                                    : 'No address available'),
-                                const SizedBox(height: 4),
+                                if (r.address.trim().isNotEmpty)
+                                  Text(
+                                    r.address,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                if (r.address.trim().isNotEmpty)
+                                  const SizedBox(height: 6),
                                 Wrap(
                                   spacing: 8,
                                   children: r.tags
@@ -555,36 +741,6 @@ class _ProfileTabState extends State<_ProfileTab> {
                   _buildProfileOption(Icons.info_outline, 'About', () {
                     Navigator.pushNamed(context, '/about');
                   }),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFB6C1), Color(0xFFFFA07A)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () => _showUpdateProfileDialog(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                      ),
-                      child: const Text(
-                        'Update Profile',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -601,145 +757,6 @@ class _ProfileTabState extends State<_ProfileTab> {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
-    );
-  }
-
-  void _showUpdateProfileDialog(BuildContext context) {
-    final nameController = TextEditingController(text: UserData.fullName);
-    final phoneController = TextEditingController(text: UserData.mobile);
-    final emailController = TextEditingController(text: UserData.email);
-    bool isLoading = false;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              title: const Text(
-                'Update Profile',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D3748)),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildTextField(
-                        'Full Name', nameController, 'Enter your full name'),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                        'Phone Number', phoneController, 'XXX-XXX-XXXX'),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                        'Email', emailController, 'example@example.com'),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed:
-                      isLoading ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel',
-                      style: TextStyle(
-                          color: Color(0xFF718096),
-                          fontWeight: FontWeight.w600)),
-                ),
-                ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setState(() => isLoading = true);
-
-                          UserData.updateProfile(
-                            fullName: nameController.text.trim(),
-                            mobile: phoneController.text.trim(),
-                            email: emailController.text.trim(),
-                          );
-
-                          try {
-                            await UserData.saveToSupabase();
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Could not sync profile: $e'),
-                                  backgroundColor: Colors.orange,
-                                ),
-                              );
-                            }
-                          }
-
-                          setState(() => isLoading = false);
-
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Profile updated successfully!'),
-                                  backgroundColor: Colors.green),
-                            );
-                          }
-                          widget.onProfileUpdated();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF56565),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text('Save Changes',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildTextField(
-      String label, TextEditingController controller, String hint) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: Color(0xFF2D3748),
-                fontSize: 16,
-                fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFFE53E3E)),
-            filled: true,
-            fillColor: const Color(0xFFE2E8F0),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          ),
-        ),
-      ],
     );
   }
 }

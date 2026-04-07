@@ -14,15 +14,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   Future<void> _reset() async {
     setState(() => _loading = true);
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(_email.text.trim());
+      await Supabase.instance.client.auth
+          .resetPasswordForEmail(_email.text.trim());
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password reset email sent.')));
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

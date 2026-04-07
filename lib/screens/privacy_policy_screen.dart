@@ -9,10 +9,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: primary,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: primary),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -42,7 +41,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
-                      'Your privacy is our priority. Last updated: September 2025',
+                      'How AidSense handles your information.',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -71,11 +70,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
             _buildSection(
               '5. YOUR PRIVACY RIGHTS',
-              'You have the following rights regarding your personal information:\n\n• Access: Request a copy of the personal information we have about you\n• Correction: Update or correct inaccurate information\n• Deletion: Request deletion of your personal information\n• Portability: Receive your data in a portable format\n• Opt-out: Unsubscribe from non-essential communications\n• Location Control: Turn off location sharing at any time\n\nTo exercise these rights, contact us at privacy@aidsense.com. We will respond within 30 days.',
+              'You have the following rights regarding your personal information:\n\n• Access: Request a copy of the personal information we have about you\n• Correction: Update or correct inaccurate information\n• Deletion: Request deletion of your personal information\n• Portability: Receive your data in a portable format\n• Opt-out: Unsubscribe from non-essential communications\n• Location Control: Turn off location sharing at any time\n\nTo exercise these rights, contact support@aidsense.app. We will respond within 30 days.',
             ),
             _buildSection(
               '6. CHILDREN\'S PRIVACY',
-              'AidSense is not intended for children under 13. We do not knowingly collect personal information from children under 13. If we discover we have collected information from a child under 13, we will delete it immediately.\n\nIf you believe we have collected information from a child under 13, please contact us at privacy@aidsense.com.',
+              'AidSense is not intended for children under 13. We do not knowingly collect personal information from children under 13. If we discover we have collected information from a child under 13, we will delete it immediately.\n\nIf you believe we have collected information from a child under 13, please contact support@aidsense.app.',
             ),
             _buildSection(
               '7. LOCATION DATA',
@@ -99,7 +98,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
             _buildSection(
               '12. CONTACT US',
-              'For privacy-related questions or requests:\n\nPrivacy Officer\nAidSense Inc.\nEmail: privacy@aidsense.com\nPhone: (201) 555-0123\nAddress: 123 Community Way, Jersey City, NJ 07302\n\nFor general support: support@aidsense.com\nFor security issues: security@aidsense.com',
+              'For privacy-related questions or requests, contact support@aidsense.app through the app or by email.',
             ),
             const SizedBox(height: 32),
             Container(

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'resource_detail_screen.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -43,18 +46,63 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     setState(() => _loading = true);
 
     try {
-      // Save profile to Supabase
-      await Supabase.instance.client.from('profiles').upsert({
-        'uid': Supabase.instance.client.auth.currentUser?.id,
-        'fullName': _fullNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-      });
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user == null) {
+        throw Exception('You must be signed in to update your profile.');
+      }
+
+      final fullName = _fullNameController.text.trim();
+      final email = _emailController.text.trim();
+      final phone = _phoneController.text.trim();
+
+      final payload = {
+        'uid': user.id,
+        'id': user.id,
+        'fullName': fullName,
+        'email': email,
+        'phone': phone,
+        'favorites': UserData.favorites,
+      };
+
+      var tableMissing = false;
+      try {
+        await client.from('profiles').upsert(payload);
+      } on PostgrestException catch (e) {
+        if (e.code == 'PGRST205') {
+          tableMissing = true;
+        } else {
+          rethrow;
+        }
+      } catch (_) {
+        await client.from('profiles').update(payload).eq('uid', user.id);
+      }
+
+      try {
+        await client.auth.updateUser(
+          UserAttributes(
+            data: {
+              'full_name': fullName,
+              'phone': phone,
+              'email': email,
+            },
+          ),
+        );
+      } catch (_) {
+        if (tableMissing) {
+          rethrow;
+        }
+      }
+
       await UserData.loadFromSupabase();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
+          SnackBar(
+            content: Text(
+              tableMissing
+                  ? 'Profile saved. Supabase table "profiles" is missing, so fallback storage was used.'
+                  : 'Profile updated successfully!',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -372,7 +420,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
               ),
             ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -432,14 +479,13 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _pushNotifications = true;
-  bool _sounds = false;
-  bool _offlineMode = true;
 
   @override
   void initState() {
@@ -448,90 +494,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    // In a real app, you'd use SharedPreferences here
-    // For now, just using default values
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
-      _pushNotifications = true;
-      _sounds = false;
-      _offlineMode = true;
+      _pushNotifications = prefs.getBool('push_notifications_enabled') ?? true;
     });
   }
 
-  Future<void> _saveSettings() async {
-    // In a real app, you'd save to SharedPreferences here
-    // For now, just show a confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Settings saved!'),
-        duration: Duration(seconds: 1),
+  Future<void> _savePushNotificationSetting(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('push_notifications_enabled', enabled);
+  }
+
+  Future<bool> _confirmEnableNotifications() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enable push notifications?'),
+        content: const Text(
+          'AidSense can notify you about important updates and resource changes. Do you want to turn them on?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Not now'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Enable'),
+          ),
+        ],
       ),
     );
+    return confirmed ?? false;
+  }
+
+  Future<void> _setPushNotifications(bool enabled) async {
+    if (enabled) {
+      final confirmed = await _confirmEnableNotifications();
+      if (!confirmed) {
+        if (mounted) {
+          setState(() => _pushNotifications = false);
+        }
+        return;
+      }
+    }
+
+    if (mounted) {
+      setState(() => _pushNotifications = enabled);
+    }
+    await _savePushNotificationSetting(enabled);
   }
 
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings'), backgroundColor: primary),
-      body: ListView(children: [
-        // Profile Section
-        ListTile(
-          leading: const Icon(Icons.person_outline, color: primary),
-          title: const Text('Edit Profile'),
-          subtitle: const Text('Update your personal information and zip code'),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const ProfileEditScreen()),
-            );
-          },
-        ),
-        const Divider(),
-
-        // Settings Section
-        SwitchListTile(
-          value: _pushNotifications,
-          onChanged: (value) {
-            setState(() => _pushNotifications = value);
-            _saveSettings();
-          },
-          title: const Text('Push Notifications'),
-          subtitle: Text(_pushNotifications ? 'Enabled' : 'Disabled'),
-          secondary: Icon(
-            _pushNotifications ? Icons.notifications : Icons.notifications_off,
-            color: primary,
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.person_outline, color: primary),
+            title: const Text('Edit Profile'),
+            subtitle: const Text('Update your name, email, and phone'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfileEditScreen(),
+                ),
+              );
+            },
           ),
-        ),
-        SwitchListTile(
-          value: _sounds,
-          onChanged: (value) {
-            setState(() => _sounds = value);
-            _saveSettings();
-          },
-          title: const Text('Sounds'),
-          subtitle: Text(_sounds ? 'Enabled' : 'Disabled'),
-          secondary: Icon(
-            _sounds ? Icons.volume_up : Icons.volume_off,
-            color: primary,
+          const Divider(height: 1),
+          SwitchListTile(
+            value: _pushNotifications,
+            onChanged: _setPushNotifications,
+            title: const Text('Push Notifications'),
+            subtitle: Text(
+              _pushNotifications ? 'Enabled for important updates' : 'Disabled',
+            ),
+            secondary: Icon(
+              _pushNotifications
+                  ? Icons.notifications
+                  : Icons.notifications_off,
+              color: primary,
+            ),
           ),
-        ),
-        SwitchListTile(
-          value: _offlineMode,
-          onChanged: (value) {
-            setState(() => _offlineMode = value);
-            _saveSettings();
-          },
-          title: const Text('Offline Mode'),
-          subtitle: Text(
-              _offlineMode ? 'Cache resources locally' : 'Requires internet'),
-          secondary: Icon(
-            _offlineMode ? Icons.cloud_off : Icons.cloud,
-            color: primary,
-          ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -569,16 +621,15 @@ class PasswordManagerScreen extends StatelessWidget {
 
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
     return Scaffold(
-      appBar:
-          AppBar(title: const Text('Help Center'), backgroundColor: primary),
+      appBar: AppBar(title: const Text('Help Center')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Quick Actions Section
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -589,7 +640,7 @@ class HelpCenterScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Need immediate help?',
+                  'Need help?',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -597,41 +648,74 @@ class HelpCenterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text('Call our 24/7 support line: (201) 555-0123'),
+                const Text(
+                  'Use email support if you need help with the app or your account.',
+                ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.chat, size: 16),
-                        label: const Text('Live Chat'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primary,
-                          foregroundColor: Colors.white,
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      const email = 'support@aidsense.app';
+                      final subject = Uri.encodeComponent('AidSense Support');
+                      final body = Uri.encodeComponent('');
+
+                      final launchTargets = <Uri>[
+                        Uri(
+                          scheme: 'mailto',
+                          path: email,
+                          queryParameters: {
+                            'subject': 'AidSense Support',
+                            if (body.isNotEmpty) 'body': body,
+                          },
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.email, size: 16),
-                        label: const Text('Email Us'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: primary,
-                          side: const BorderSide(color: primary),
+                        Uri.parse(
+                          'https://mail.google.com/mail/?view=cm&fs=1&to=$email&su=$subject',
                         ),
-                      ),
+                        Uri.parse(
+                          'https://outlook.office.com/mail/deeplink/compose?to=$email&subject=$subject',
+                        ),
+                      ];
+
+                      bool opened = false;
+                      for (final target in launchTargets) {
+                        try {
+                          opened = await launchUrl(
+                            target,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } catch (_) {
+                          opened = false;
+                        }
+                        if (opened) break;
+                      }
+
+                      if (!opened && context.mounted) {
+                        await Clipboard.setData(const ClipboardData(
+                          text: email,
+                        ));
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Email copied to clipboard. Paste it into your mail app: support@aidsense.app',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.email_outlined, size: 18),
+                    label: const Text('Send Email'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: Colors.white,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-
-          // Legal Documents
           ListTile(
             leading: const Icon(Icons.description, color: primary),
             title: const Text('Terms of Service'),
@@ -641,7 +725,8 @@ class HelpCenterScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const TermsOfServiceScreen()),
+                  builder: (context) => const TermsOfServiceScreen(),
+                ),
               );
             },
           ),
@@ -654,20 +739,28 @@ class HelpCenterScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const PrivacyPolicyScreen()),
+                  builder: (context) => const PrivacyPolicyScreen(),
+                ),
               );
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.info_outline, color: primary),
+            title: const Text('About AidSense'),
+            subtitle: const Text('Learn more about the app'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.pushNamed(context, '/about');
+            },
+          ),
           const Divider(),
-
-          // FAQ Section
           ExpansionTile(
             leading: const Icon(Icons.help_outline, color: primary),
             title: const Text('Frequently Asked Questions'),
             children: [
               _buildFAQItem(
                 'How do I find resources near me?',
-                'Enable location services and use the map or search feature. You can also update your zip code in profile settings.',
+                'Enable location services and use the map or search feature.',
               ),
               _buildFAQItem(
                 'Is AidSense free to use?',
@@ -687,32 +780,28 @@ class HelpCenterScreen extends StatelessWidget {
               ),
               _buildFAQItem(
                 'What if a resource location is closed or incorrect?',
-                'Please report incorrect information through the app or email us at support@aidsense.com. We\'ll investigate and update it.',
+                'Please report incorrect information through the app or email support@aidsense.app. We\'ll investigate and update it.',
               ),
             ],
           ),
-
-          // Account Help
           ExpansionTile(
             leading: const Icon(Icons.account_circle, color: primary),
             title: const Text('Account & Profile'),
             children: [
               _buildFAQItem(
                 'How do I update my profile information?',
-                'Go to Settings > Edit Profile to update your name, email, phone number, and zip code.',
+                'Go to Settings to update your account details.',
               ),
               _buildFAQItem(
                 'Can I delete my account?',
-                'Yes, contact us at support@aidsense.com to permanently delete your account and all associated data.',
+                'Yes, contact support@aidsense.app to permanently delete your account and all associated data.',
               ),
               _buildFAQItem(
                 'How do I change my notification settings?',
-                'Go to Settings and toggle push notifications, sounds, or offline mode as needed.',
+                'Go to Settings and toggle push notifications as needed.',
               ),
             ],
           ),
-
-          // Technical Support
           ExpansionTile(
             leading: const Icon(Icons.build, color: primary),
             title: const Text('Technical Support'),
@@ -727,41 +816,9 @@ class HelpCenterScreen extends StatelessWidget {
               ),
               _buildFAQItem(
                 'I\'m not receiving notifications',
-                'Check notification permissions in device settings and ensure they\'re enabled in the app settings.',
+                'Check notification permissions in device settings and ensure push notifications are enabled in the app settings.',
               ),
             ],
-          ),
-
-          // Contact Information
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Contact Information',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 12),
-                Text('📧 Email: support@aidsense.com'),
-                Text('📞 Phone: (201) 555-0123'),
-                Text('📍 Address: 123 Community Way, Jersey City, NJ 07302'),
-                SizedBox(height: 8),
-                Text(
-                  'Business Hours: Monday-Friday 9AM-6PM EST',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -845,6 +902,7 @@ class FavoritesScreen extends StatelessWidget {
                               r, userLatLng);
                           final polylines =
                               await polylineService.getPolyline(r, userLatLng);
+                          if (!context.mounted) return;
 
                           Navigator.push(
                             context,

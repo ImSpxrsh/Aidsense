@@ -61,18 +61,30 @@
 
 	<!-- Supabase OAuth (Google) deep link: com.aidsense.app://login-callback/ -->
 	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.aidsense.app.oauth</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.aidsense.app</string>
-			</array>
-		</dict>
-	</array>
+<array>
+  <!-- Supabase deep link -->
+  <dict>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>CFBundleURLName</key>
+    <string>com.aidsense.app.oauth</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>com.aidsense.app</string>
+    </array>
+  </dict>
+  <!-- Google Sign-In reversed client ID -->
+  <dict>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>CFBundleURLName</key>
+    <string>Google</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>com.googleusercontent.apps.994189160099-o3s2a2p04nu4e74uqj8sjbdjt29dedfk</string>
+    </array>
+  </dict>
+</array>
 
 </dict>
 </plist>

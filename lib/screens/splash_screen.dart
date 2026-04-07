@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../providers.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -40,10 +42,31 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeApp() async {
-    // Remove duplicate Supabase.initialize here, since it's already in main.dart
+    bool onboardingComplete = false;
+    try {
+      onboardingComplete = await ref.read(onboardingCompleteProvider.future);
+    } catch (_) {
+      onboardingComplete = false;
+    }
+
     await Future.delayed(const Duration(seconds: 2));
+
+    // Read session as late as possible to avoid racing with auth state restore.
+    var hasSession = Supabase.instance.client.auth.currentSession != null;
+    if (!hasSession) {
+      try {
+        await Supabase.instance.client.auth.onAuthStateChange.first
+            .timeout(const Duration(milliseconds: 1200));
+      } catch (_) {
+        // Ignore timeout/errors and use current known session state.
+      }
+      hasSession = Supabase.instance.client.auth.currentSession != null;
+    }
+
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/onboarding');
+      final nextRoute =
+          hasSession ? '/home' : (onboardingComplete ? '/' : '/onboarding');
+      Navigator.pushReplacementNamed(context, nextRoute);
     }
   }
 

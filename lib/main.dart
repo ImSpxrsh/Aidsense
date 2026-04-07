@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'user_data.dart';
 import 'screens/splash_screen.dart';
@@ -10,6 +11,8 @@ import 'screens/reset_password_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/resource_detail_screen.dart';
 import 'screens/profile_screens.dart';
+import 'screens/privacy_policy_screen.dart';
+import 'screens/about_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
@@ -19,7 +22,7 @@ Future<void> main() async {
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
-    print('Error loading .env: $e');
+    debugPrint('Error loading .env: $e');
   }
 
   // Always initialize Supabase before runApp
@@ -32,7 +35,7 @@ Future<void> main() async {
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
-  print('Supabase initialized successfully');
+  debugPrint('Supabase initialized successfully');
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     if (data.event == AuthChangeEvent.signedIn && data.session != null) {
@@ -48,7 +51,7 @@ Future<void> main() async {
     }
   });
 
-  runApp(const AidSenseApp());
+  runApp(const ProviderScope(child: AidSenseApp()));
 }
 
 class AidSenseApp extends StatelessWidget {
@@ -64,6 +67,16 @@ class AidSenseApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: primary, primary: primary),
         useMaterial3: true,
         fontFamily: 'SF Pro',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          iconTheme: IconThemeData(color: Colors.white),
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       initialRoute: '/splash',
       routes: {
@@ -80,7 +93,8 @@ class AidSenseApp extends StatelessWidget {
         '/password': (_) => const PasswordManagerScreen(),
         '/help': (_) => const HelpCenterScreen(),
         '/notifications': (_) => const NotificationsScreen(),
-        // '/admin': (_) => const AdminScreen(),
+        '/privacy': (_) => const PrivacyPolicyScreen(),
+        '/about': (_) => const AboutScreen(),
       },
     );
   }

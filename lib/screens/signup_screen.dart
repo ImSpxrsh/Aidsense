@@ -25,8 +25,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
-    _authSub =
-        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (!mounted || data.session == null) return;
       if (data.event != AuthChangeEvent.signedIn) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -59,12 +58,22 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _signup() async {
+    final email = _email.text.trim();
+    final password = _pass.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both email and password.')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       // Sign up with Supabase (metadata is available to triggers / load fallbacks)
       final response = await Supabase.instance.client.auth.signUp(
-        email: _email.text.trim(),
-        password: _pass.text.trim(),
+        email: email,
+        password: password,
         data: {
           'full_name': _fullName.text.trim(),
           'phone': _mobileNumber.text.trim(),
@@ -76,7 +85,7 @@ class _SignupScreenState extends State<SignupScreen> {
         final dob = _dateOfBirth.text.trim();
         UserData.saveUser(
           fullName: _fullName.text.trim(),
-          email: _email.text.trim(),
+          email: email,
           mobile: _mobileNumber.text.trim(),
           dateOfBirth: dob,
         );
@@ -87,7 +96,7 @@ class _SignupScreenState extends State<SignupScreen> {
             await Supabase.instance.client.from('profiles').upsert({
               'uid': response.user!.id,
               'fullName': _fullName.text.trim(),
-              'email': _email.text.trim(),
+              'email': email,
               'phone': _mobileNumber.text.trim(),
               'favorites': [],
             });
@@ -98,6 +107,7 @@ class _SignupScreenState extends State<SignupScreen> {
         }
 
         final needsConfirm = response.session == null;
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -107,17 +117,20 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
         );
-        Navigator.pushReplacementNamed(context, needsConfirm ? '/login' : '/home');
+        Navigator.pushReplacementNamed(
+            context, needsConfirm ? '/login' : '/home');
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Signup failed')));
       }
     } catch (e) {
-      print('Signup error: $e');
+      debugPrint('Signup error: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -139,7 +152,7 @@ class _SignupScreenState extends State<SignupScreen> {
             'We protect your personal information as outlined in our Privacy Policy.\n\n'
             '5. DISCLAIMER\n'
             'Resource information is provided as-is. Always verify details directly.\n\n'
-            'For questions, contact: support@aidsense.com',
+            'For questions, contact support@aidsense.app',
             style: TextStyle(fontSize: 14),
           ),
         ),
@@ -177,7 +190,7 @@ class _SignupScreenState extends State<SignupScreen> {
             'We use industry-standard security measures.\n\n'
             '5. YOUR RIGHTS\n'
             'You can access, update, or delete your data anytime.\n\n'
-            'Contact: privacy@aidsense.com\n'
+            'Contact: support@aidsense.app\n'
             'Last updated: September 2025',
             style: TextStyle(fontSize: 14),
           ),
@@ -229,7 +242,7 @@ class _SignupScreenState extends State<SignupScreen> {
             _buildInputField(
               label: 'Email',
               controller: _email,
-              placeholder: 'example@example.com',
+              placeholder: 'support@aidsense.app',
             ),
             const SizedBox(height: 20),
 
@@ -347,10 +360,8 @@ class _SignupScreenState extends State<SignupScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            OutlinedButton.icon(
+            OutlinedButton(
               onPressed: _loading ? null : _signInWithGoogle,
-              icon: const Icon(Icons.login, size: 22),
-              label: const Text('Continue with Google'),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 52),
                 foregroundColor: const Color(0xFF2D3748),
@@ -358,6 +369,19 @@ class _SignupScreenState extends State<SignupScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/google_logo.png',
+                    width: 20,
+                    height: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Continue with Google'),
+                ],
               ),
             ),
             const SizedBox(height: 24),

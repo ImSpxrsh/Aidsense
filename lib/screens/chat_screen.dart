@@ -211,7 +211,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final lowerMessage = message.toLowerCase().trim();
     final resources =
         widget.resources ?? await _resourceService.fetchResourcesOnce();
-    print("Fetched " + resources.length.toString() + " resources from service");
+    debugPrint('Fetched ${resources.length} resources from service');
 
     final Set<Resource> suggestedResources = {};
     final Map<String, List<String>> explicitRequests = {
@@ -226,10 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (lowerMessage.contains(phrase)) {
           final matched =
               resources.where((r) => r.type.toLowerCase().contains(type));
-          print("Matched " +
-              matched.length.toString() +
-              " resources for " +
-              type);
+          debugPrint('Matched ${matched.length} resources for $type');
           suggestedResources.addAll(matched);
           break;
         }
@@ -238,7 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (suggestedResources.isEmpty && resources.isNotEmpty) {
       suggestedResources.addAll(resources.take(5));
-      print("No explicit match, fallback to first 5 resources");
+      debugPrint('No explicit match, fallback to first 5 resources');
     }
 
     final topResources = suggestedResources.take(5).toList();
@@ -259,8 +256,7 @@ Respond helpfully and specifically about this resource.
           "I couldn't fully process your request, but here are some helpful resources:";
     }
 
-    print(
-        "Returning " + topResources.length.toString() + " suggested resources");
+    debugPrint('Returning ${topResources.length} suggested resources');
     return ChatResponse(
       text: gptResponse,
       resources: topResources,
@@ -277,7 +273,7 @@ Respond helpfully and specifically about this resource.
       final data = jsonDecode(response.body);
       return List<Map<String, dynamic>>.from(data['results'] ?? []);
     } else {
-      print('Google Places API error: ${response.statusCode}');
+      debugPrint('Google Places API error: ${response.statusCode}');
       return [];
     }
   }
@@ -646,7 +642,7 @@ Respond helpfully and specifically about this resource.
   }
 
   Widget _buildResourceCard(Resource resource, Color primary) {
-    print("Building resource card: ${resource.name}, ${resource.type}");
+    debugPrint('Building resource card: ${resource.name}, ${resource.type}');
     return Card(
       margin: const EdgeInsets.only(bottom: 8, left: 40),
       child: ListTile(
