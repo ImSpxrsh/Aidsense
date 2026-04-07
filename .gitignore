@@ -22,6 +22,9 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 # Android
 android/.gradle/
 android/local.properties
+android/*.hprof
+android/hs_err_pid*.log
+android/replay_pid*.log
 
 # Firebase config at root (copies placed under platform folders instead)
 android_google_services.json
