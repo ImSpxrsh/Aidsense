@@ -32,3 +32,8 @@ class OnboardingController {
 final onboardingControllerProvider = Provider<OnboardingController>((ref) {
   return OnboardingController();
 });
+
+// On every app launch we require a fresh location check before showing map data.
+final requireFreshLocationOnLaunchProvider = StateProvider<bool>((ref) {
+  return true;
+});

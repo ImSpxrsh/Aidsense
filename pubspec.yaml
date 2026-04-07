@@ -1,7 +1,7 @@
 name: aidsense_app
 description: AidSense Flutter app with Supabase Authentication (android, ios, web)
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.2+3
 
 environment:
   sdk: ">=2.18.0 <4.0.0"

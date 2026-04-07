@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
@@ -10,24 +11,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../user_data.dart';
 import '../models.dart';
 import '../mock_resources.dart';
+import '../providers.dart';
 import 'chat_screen.dart';
 import 'resource_detail_screen.dart';
 import '../google_maps.dart';
 import '../screens/places_service.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   static const String _resourceCacheKey = 'nearby_resources_cache_v1';
   static const String _lastKnownPositionCacheKey =
       'last_known_user_position_v1';
   static const LatLng _defaultFallbackPosition =
       LatLng(40.7128, -74.0060); // NYC fallback for emulator timeouts
+  static const Duration _resumeRefreshMinGap = Duration(minutes: 2);
+  static const Duration _backgroundRefreshThreshold = Duration(seconds: 25);
 
   int _tab = 0;
 
@@ -39,9 +44,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Shared resource state
   List<Resource> _resources = [];
   bool _loading = true;
+  String? _loadingStageLabel;
   LatLng? _userPosition;
   bool _refreshingOnResume = false;
   DateTime? _lastResumeRefreshAt;
+  DateTime? _lastBackgroundAt;
 
   bool _isPermissionGranted(PermissionStatus perm) {
     return perm == PermissionStatus.granted ||
@@ -51,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    ref.read(requireFreshLocationOnLaunchProvider.notifier).state = true;
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _bootstrapResources();
@@ -65,6 +73,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _lastBackgroundAt = DateTime.now();
+    }
+
     if (state == AppLifecycleState.resumed) {
       _refreshNearbyOnResume();
     }
@@ -73,9 +87,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _refreshNearbyOnResume() async {
     if (_refreshingOnResume) return;
 
+    final backgroundAt = _lastBackgroundAt;
+    if (backgroundAt != null &&
+        DateTime.now().difference(backgroundAt) < _backgroundRefreshThreshold) {
+      return;
+    }
+
     final now = DateTime.now();
     final last = _lastResumeRefreshAt;
-    if (last != null && now.difference(last) < const Duration(seconds: 10)) {
+    if (last != null && now.difference(last) < _resumeRefreshMinGap) {
       return;
     }
 
@@ -89,7 +109,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _bootstrapResources() async {
-    await _loadCachedResources();
+    final mustCheckFresh = ref.read(requireFreshLocationOnLaunchProvider);
+    if (!mustCheckFresh) {
+      await _loadCachedResources();
+    } else if (mounted) {
+      setState(() {
+        _resources = [];
+        _userPosition = null;
+      });
+    }
     await _loadNearbyPlaces();
   }
 
@@ -180,52 +208,78 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _loadNearbyPlaces() async {
+  Future<void> _loadNearbyPlaces({LatLng? forcedPosition}) async {
+    final mustCheckFresh = ref.read(requireFreshLocationOnLaunchProvider) &&
+        forcedPosition == null;
+
     if (mounted) {
-      setState(() => _loading = _resources.isEmpty);
+      setState(() {
+        _loading = _resources.isEmpty;
+        if (_loading) {
+          _loadingStageLabel = 'Searching for resources...';
+        }
+      });
     }
     try {
       final location = Location();
-      LatLng pos = _userPosition ?? _defaultFallbackPosition;
+      LatLng? freshPosition = forcedPosition;
 
-      try {
-        bool enabled =
-            await location.serviceEnabled().timeout(const Duration(seconds: 5));
-        if (!enabled) {
-          enabled = await location
-              .requestService()
-              .timeout(const Duration(seconds: 8));
+      if (freshPosition == null) {
+        try {
+          bool enabled = await location
+              .serviceEnabled()
+              .timeout(const Duration(seconds: 5));
           if (!enabled) {
-            debugPrint(
-                'Location service unavailable, using fallback position.');
+            enabled = await location
+                .requestService()
+                .timeout(const Duration(seconds: 8));
+            if (!enabled) {
+              debugPrint(
+                  'Location service unavailable, using fallback position.');
+            }
           }
-        }
 
-        PermissionStatus perm =
-            await location.hasPermission().timeout(const Duration(seconds: 5));
-        if (perm == PermissionStatus.denied) {
-          perm = await location
-              .requestPermission()
-              .timeout(const Duration(seconds: 8));
-        }
-
-        if (_isPermissionGranted(perm) && enabled) {
-          final loc = await location.getLocation().timeout(
-                const Duration(seconds: 20),
-              );
-          if (loc.latitude != null && loc.longitude != null) {
-            pos = LatLng(loc.latitude!, loc.longitude!);
+          PermissionStatus perm = await location
+              .hasPermission()
+              .timeout(const Duration(seconds: 5));
+          if (perm == PermissionStatus.denied) {
+            perm = await location
+                .requestPermission()
+                .timeout(const Duration(seconds: 8));
           }
+
+          if (_isPermissionGranted(perm) && enabled) {
+            final loc = await location.getLocation().timeout(
+                  const Duration(seconds: 20),
+                );
+            if (loc.latitude != null && loc.longitude != null) {
+              freshPosition = LatLng(loc.latitude!, loc.longitude!);
+            }
+          }
+        } on TimeoutException {
+          debugPrint(
+            'Location timed out, continuing with cached/default position.',
+          );
+        } catch (e) {
+          debugPrint('Location fetch failed, continuing with fallback: $e');
         }
-      } on TimeoutException {
-        debugPrint(
-          'Location timed out, continuing with cached/default position.',
-        );
-      } catch (e) {
-        debugPrint('Location fetch failed, continuing with fallback: $e');
+      }
+
+      if (mustCheckFresh && freshPosition == null) {
+        if (mounted) {
+          setState(() {
+            _userPosition = null;
+            _resources = [];
+            _loading = false;
+            _loadingStageLabel = null;
+          });
+        }
+        return;
       }
 
       final List<Resource> all = [];
+      final queryPosition =
+          freshPosition ?? _userPosition ?? _defaultFallbackPosition;
       const categories = ['shelter', 'food', 'clinic', 'Mental Health'];
       final keywordMap = {
         'food': 'food bank soup kitchen',
@@ -235,10 +289,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       };
 
       for (final c in categories) {
+        if (mounted && _loading) {
+          setState(() => _loadingStageLabel = _loadingLabelForCategory(c));
+        }
         try {
           final places = await PlacesService.fetchNearby(
-            lat: pos.latitude,
-            lng: pos.longitude,
+            lat: queryPosition.latitude,
+            lng: queryPosition.longitude,
             keyword: keywordMap[c]!,
           );
           final detailedPlaces = await Future.wait(
@@ -286,17 +343,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       if (mounted) {
         setState(() {
-          _userPosition = pos;
+          if (freshPosition != null) {
+            _userPosition = freshPosition;
+          }
           _resources = all;
           _loading = false;
         });
       }
-      await _persistLastKnownPosition(pos);
+      if (freshPosition != null) {
+        ref.read(requireFreshLocationOnLaunchProvider.notifier).state = false;
+        await _persistLastKnownPosition(freshPosition);
+      }
       await _persistResourceCache(all);
 
       if (all.isEmpty && mounted && _resources.isEmpty) {
         setState(() {
           _resources = mockResources;
+          _loadingStageLabel = null;
         });
       }
     } catch (e) {
@@ -304,13 +367,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted && _resources.isEmpty) {
         setState(() {
           _resources = mockResources;
+          _loadingStageLabel = null;
         });
       }
     } finally {
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() {
+          _loading = false;
+          _loadingStageLabel = null;
+        });
       }
     }
+  }
+
+  Future<void> _onMapLocationResolved(LatLng position) async {
+    if (!mounted) return;
+    ref.read(requireFreshLocationOnLaunchProvider.notifier).state = false;
+    setState(() {
+      _userPosition = position;
+      _loading = true;
+      _loadingStageLabel = 'Searching for resources...';
+    });
+    await _loadNearbyPlaces(forcedPosition: position);
   }
 
   @override
@@ -369,7 +447,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _MapAndListTab(
             resources: _resources,
             loading: _loading,
-            userPosition: _userPosition,
+            loadingStageLabel: _loadingStageLabel,
+            userPosition: ref.watch(requireFreshLocationOnLaunchProvider)
+                ? null
+                : _userPosition,
+            onLocationResolved: _onMapLocationResolved,
           ),
           ChatScreen(resources: _resources),
           _ProfileTab(
@@ -397,6 +479,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
     );
   }
+
+  String _loadingLabelForCategory(String category) {
+    switch (category) {
+      case 'shelter':
+        return 'Searching for shelters...';
+      case 'food':
+        return 'Searching for food banks and meals...';
+      case 'clinic':
+        return 'Searching for free clinics...';
+      case 'Mental Health':
+        return 'Searching for mental health support...';
+      default:
+        return 'Searching for resources...';
+    }
+  }
 }
 
 /* ---------------- MAP + LIST TAB ---------------- */
@@ -404,12 +501,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 class _MapAndListTab extends StatefulWidget {
   final List<Resource> resources;
   final bool loading;
+  final String? loadingStageLabel;
   final LatLng? userPosition;
+  final ValueChanged<LatLng> onLocationResolved;
   const _MapAndListTab(
       {Key? key,
       required this.resources,
       required this.loading,
-      required this.userPosition})
+      this.loadingStageLabel,
+      required this.userPosition,
+      required this.onLocationResolved})
       : super(key: key);
 
   @override
@@ -492,6 +593,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             searchQuery: _searchQuery,
             selectedFilter: _selectedFilter,
             initialPosition: widget.userPosition,
+            onLocationResolved: widget.onLocationResolved,
           ),
         ),
         Expanded(
@@ -504,7 +606,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                       const CircularProgressIndicator(),
                       const SizedBox(height: 16),
                       Text(
-                        _getLoadingMessage(),
+                        _getLoadingMessage(widget.loadingStageLabel),
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],
@@ -600,7 +702,10 @@ class _MapAndListTabState extends State<_MapAndListTab> {
     }
   }
 
-  String _getLoadingMessage() {
+  String _getLoadingMessage(String? liveLoadingLabel) {
+    if (liveLoadingLabel != null && liveLoadingLabel.isNotEmpty) {
+      return liveLoadingLabel;
+    }
     switch (_selectedFilter) {
       case 'Shelter':
         return 'Searching for shelters...';

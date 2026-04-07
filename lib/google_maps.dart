@@ -12,6 +12,7 @@ class MapPage extends StatefulWidget {
   final List<Resource> resources;
   final String searchQuery;
   final String selectedFilter;
+  final ValueChanged<LatLng>? onLocationResolved;
 
   /// Position from parent (single location request). If set, map uses this instead of requesting location again.
   final LatLng? initialPosition;
@@ -22,6 +23,7 @@ class MapPage extends StatefulWidget {
     required this.searchQuery,
     required this.selectedFilter,
     this.initialPosition,
+    this.onLocationResolved,
   });
 
   @override
@@ -347,7 +349,11 @@ class MapPageState extends State<MapPage> {
       return;
     }
 
-    await _ensureLocationAndFetch(requestIfNeeded: true);
+    if (!mounted) return;
+    setState(() {
+      _hasCompletedInitialLocationCheck = true;
+      _locationIssue = 'Tap "Use My Location" to enable location access.';
+    });
   }
 
   bool _isPermissionGranted(PermissionStatus perm) {
@@ -374,7 +380,8 @@ class MapPageState extends State<MapPage> {
         if (!mounted) return;
         setState(() {
           _hasCompletedInitialLocationCheck = true;
-          _locationIssue = 'Location services are off on this device.';
+          _locationIssue =
+              'Location services are off. Enable location in system settings and try again.';
         });
         return;
       }
@@ -391,8 +398,9 @@ class MapPageState extends State<MapPage> {
         if (!mounted) return;
         setState(() {
           _hasCompletedInitialLocationCheck = true;
-          _locationIssue =
-              'Location permission is required. Please allow location access.';
+          _locationIssue = perm == PermissionStatus.deniedForever
+              ? 'Location permission is blocked by iOS/Android settings. Enable it in system settings and try again.'
+              : 'Location permission is required. Please allow access and try again.';
         });
         return;
       }
@@ -415,6 +423,7 @@ class MapPageState extends State<MapPage> {
         _hasCompletedInitialLocationCheck = true;
         _locationIssue = null;
       });
+      widget.onLocationResolved?.call(_userPosition!);
       if (_iconsLoaded) loadData();
       _listenToLocationUpdates();
     } on TimeoutException {
