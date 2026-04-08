@@ -955,6 +955,74 @@ class FavoritesScreen extends StatelessWidget {
   }
 }
 
+class OfflineSavedResourcesScreen extends StatelessWidget {
+  const OfflineSavedResourcesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const primary = Color(0xFFF48A8A);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Offline Saved'),
+        backgroundColor: primary,
+        titleTextStyle: const TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: AnimatedBuilder(
+        animation: OfflineResourcesService(),
+        builder: (context, _) {
+          final saved = OfflineResourcesService().savedResources;
+          if (saved.isEmpty) {
+            return const Center(
+              child: Text(
+                'No offline resources saved yet.\nOpen a resource and tap Save in Offline Access.',
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: saved.length,
+            itemBuilder: (context, index) {
+              final r = saved[index];
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.offline_pin, color: Colors.green),
+                  title: Text(r.name),
+                  subtitle: Text(
+                    r.address.trim().isNotEmpty
+                        ? r.address
+                        : 'Address unavailable',
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      await OfflineResourcesService().toggleSavedOffline(r);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Removed from offline saves.'),
+                        ),
+                      );
+                    },
+                  ),
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    '/resource',
+                    arguments: r,
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
   @override

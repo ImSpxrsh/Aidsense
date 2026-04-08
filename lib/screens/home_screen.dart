@@ -325,6 +325,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 name: p.name,
                 type: c,
                 address: p.address,
+                openingHours: p.openingHours,
+                openNow: p.openNow,
+                walkIn: p.walkIn,
+                appointmentRequired: p.appointmentRequired,
+                idRequired: p.idRequired,
+                cost: p.cost,
+                familiesWelcome: p.familiesWelcome,
+                womenOnly: p.womenOnly,
+                youthFriendly: p.youthFriendly,
                 latitude: p.lat,
                 longitude: p.lng,
                 phone: p.phone,
@@ -653,23 +662,37 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (r.address.trim().isNotEmpty)
-                                  Text(
-                                    r.address,
-                                    style: const TextStyle(fontSize: 12),
+                                Text(
+                                  r.address.trim().isNotEmpty
+                                      ? r.address
+                                      : 'Address unavailable',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: r.address.trim().isNotEmpty
+                                        ? Colors.black87
+                                        : Colors.grey[600],
                                   ),
-                                if (r.address.trim().isNotEmpty)
-                                  const SizedBox(height: 6),
-                                Wrap(
-                                  spacing: 8,
-                                  children: r.tags
-                                      .map((tag) => Chip(
-                                            label: Text(tag),
-                                            backgroundColor: Colors.grey[200],
-                                            labelStyle:
-                                                const TextStyle(fontSize: 12),
-                                          ))
-                                      .toList(),
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: r.openNow
+                                        ? Colors.green.withOpacity(0.12)
+                                        : Colors.red.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    r.openNow ? 'Open now' : 'Closed now',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: r.openNow
+                                          ? Colors.green.shade800
+                                          : Colors.red.shade800,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -830,6 +853,13 @@ class _ProfileTabState extends State<_ProfileTab> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
+                  _buildProfileOption(
+                    Icons.offline_pin_outlined,
+                    'Offline Saved',
+                    () {
+                      Navigator.pushNamed(context, '/offline-saved');
+                    },
+                  ),
                   _buildProfileOption(Icons.favorite_border, 'Favorites', () {
                     Navigator.pushNamed(context, '/favorites');
                   }),
@@ -855,7 +885,11 @@ class _ProfileTabState extends State<_ProfileTab> {
     );
   }
 
-  Widget _buildProfileOption(IconData icon, String title, VoidCallback onTap) {
+  Widget _buildProfileOption(
+    IconData icon,
+    String title,
+    VoidCallback onTap,
+  ) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFFF48A8A)),
       title: Text(title,

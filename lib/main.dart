@@ -89,6 +89,7 @@ class AidSenseApp extends StatelessWidget {
         '/home': (_) => const HomeScreen(),
         '/resource': (_) => const ResourceDetailScreen(),
         '/favorites': (_) => const FavoritesScreen(),
+        '/offline-saved': (_) => const OfflineSavedResourcesScreen(),
         '/settings': (_) => const SettingsScreen(),
         '/password': (_) => const PasswordManagerScreen(),
         '/help': (_) => const HelpCenterScreen(),

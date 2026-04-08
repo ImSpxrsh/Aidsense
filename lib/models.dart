@@ -3,6 +3,15 @@ class Resource {
   final String name;
   final String type; // e.g. shelter, clinic, food, mental_health
   final String address;
+  final String openingHours;
+  final bool openNow;
+  final bool walkIn;
+  final bool appointmentRequired;
+  final bool idRequired;
+  final String cost; // free, low-cost, paid, unknown
+  final bool familiesWelcome;
+  final bool womenOnly;
+  final bool youthFriendly;
   final double latitude;
   final double longitude;
   final List<String> tags;
@@ -14,6 +23,15 @@ class Resource {
     required this.name,
     required this.type,
     required this.address,
+    this.openingHours = '',
+    this.openNow = false,
+    this.walkIn = false,
+    this.appointmentRequired = false,
+    this.idRequired = false,
+    this.cost = 'unknown',
+    this.familiesWelcome = false,
+    this.womenOnly = false,
+    this.youthFriendly = false,
     required this.latitude,
     required this.longitude,
     required this.tags,
@@ -27,6 +45,17 @@ class Resource {
       name: data['name'] ?? '',
       type: data['type'] ?? 'other',
       address: data['address'] ?? '',
+      openingHours: data['opening_hours'] ?? data['openingHours'] ?? '',
+      openNow: data['open_now'] ?? data['openNow'] ?? false,
+      walkIn: data['walk_in'] ?? data['walkIn'] ?? false,
+      appointmentRequired:
+          data['appointment_required'] ?? data['appointmentRequired'] ?? false,
+      idRequired: data['id_required'] ?? data['idRequired'] ?? false,
+      cost: (data['cost'] ?? 'unknown').toString(),
+      familiesWelcome:
+          data['families_welcome'] ?? data['familiesWelcome'] ?? false,
+      womenOnly: data['women_only'] ?? data['womenOnly'] ?? false,
+      youthFriendly: data['youth_friendly'] ?? data['youthFriendly'] ?? false,
       latitude: (data['latitude'] ?? 0).toDouble(),
       longitude: (data['longitude'] ?? 0).toDouble(),
       tags: (data['tags'] as List?)?.map((e) => e.toString()).toList() ??
@@ -41,6 +70,15 @@ class Resource {
       'name': name,
       'type': type,
       'address': address,
+      'opening_hours': openingHours,
+      'open_now': openNow,
+      'walk_in': walkIn,
+      'appointment_required': appointmentRequired,
+      'id_required': idRequired,
+      'cost': cost,
+      'families_welcome': familiesWelcome,
+      'women_only': womenOnly,
+      'youth_friendly': youthFriendly,
       'latitude': latitude,
       'longitude': longitude,
       'tags': tags,

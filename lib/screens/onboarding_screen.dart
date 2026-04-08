@@ -24,8 +24,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'image': 'assets/images/Onboardingscreenimage2.png'
     },
     {
-      'title': 'Join Your Community',
-      'subtitle': 'Connect and share with local groups.',
+      'title': 'Ask Our AI First',
+      'subtitle':
+          'Ask our AI about waitlists, ID rules, curfews, safety, and accessibility before you go.',
       'image': 'assets/images/Onboardingscreenimage3.png'
     },
   ];

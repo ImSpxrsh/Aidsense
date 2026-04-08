@@ -85,7 +85,12 @@ class _ChatScreenState extends State<ChatScreen> {
     if (widget.initialResource != null) {
       final r = widget.initialResource!;
       message = "You are now asking about ${r.name} (${r.type}). "
-          "You can ask me questions like hours, reviews, directions, or details.";
+          "Ask specific questions before you go, like: \n\n"
+          "• Is there space tonight or a waitlist?\n"
+          "• Do I need ID or documents?\n"
+          "• Is walk-in allowed or appointment required?\n"
+          "• Are there curfews or daytime exit rules?\n"
+          "• Is it safe and accessible for my needs?";
     } else {
       message =
           "Hello! I'm here to help you find resources in your community. You can ask me things like:\n\n• 'I need food tonight'\n• 'Where can I find shelter?'\n• 'I need medical help'\n• 'Show me pharmacies nearby'\n• 'I need mental health support'\n\n**Crisis Support Available 24/7** 🆘\nIf you're in crisis, I can provide immediate helpline numbers and connect you to professional support.\n\nWhat can I help you with today?";
@@ -118,44 +123,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _messageController.clear();
     _scrollToBottom();
-
-    // Check if message matches a quick suggestion intent
-    final lowerMessage = message.toLowerCase();
-    String? resourceType;
-    if (lowerMessage.contains('food')) {
-      resourceType = 'food';
-    } else if (lowerMessage.contains('shelter')) {
-      resourceType = 'shelter';
-    } else if (lowerMessage.contains('medical') ||
-        lowerMessage.contains('doctor') ||
-        lowerMessage.contains('clinic')) {
-      resourceType = 'clinic';
-    } else if (lowerMessage.contains('mental')) {
-      resourceType = 'mental';
-    }
-
-    if (resourceType != null) {
-      // Fetch top 5 resources of this type
-      final resources =
-          widget.resources ?? await _resourceService.fetchResourcesOnce();
-      final matches = resources
-          .where((r) => r.type.toLowerCase().contains(resourceType!))
-          .take(5)
-          .toList();
-      setState(() {
-        _messages.add(ChatMessage(
-          text: matches.isNotEmpty
-              ? 'Here are the nearest $resourceType resources:'
-              : 'Sorry, I could not find any $resourceType resources nearby.',
-          isUser: false,
-          timestamp: DateTime.now(),
-          suggestedResources: matches,
-        ));
-        _isTyping = false;
-      });
-      _scrollToBottom();
-      return;
-    }
 
     final response = await _processUserMessage(message);
 
@@ -208,37 +175,26 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<ChatResponse> _processUserMessage(String message) async {
-    final lowerMessage = message.toLowerCase().trim();
     final resources =
         widget.resources ?? await _resourceService.fetchResourcesOnce();
     debugPrint('Fetched ${resources.length} resources from service');
 
-    final Set<Resource> suggestedResources = {};
-    final Map<String, List<String>> explicitRequests = {
-      'shelter': ['i need shelter'],
-      'food': ['i need food'],
-      'clinic': ['i need medical help', 'i need a doctor', 'i need a clinic'],
-      'mental': ['i need therapy', 'i need counseling', 'i need mental help'],
-    };
+    final ranked = resources
+        .map((r) => MapEntry(r, _resourceMatchScore(r, message)))
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
-    for (final type in explicitRequests.keys) {
-      for (final phrase in explicitRequests[type]!) {
-        if (lowerMessage.contains(phrase)) {
-          final matched =
-              resources.where((r) => r.type.toLowerCase().contains(type));
-          debugPrint('Matched ${matched.length} resources for $type');
-          suggestedResources.addAll(matched);
-          break;
-        }
-      }
+    var topResources = ranked
+        .where((entry) => entry.value > 0)
+        .take(5)
+        .map((entry) => entry.key)
+        .toList();
+
+    if (topResources.isEmpty && resources.isNotEmpty) {
+      topResources = resources.take(5).toList();
+      debugPrint('No strong match, using top nearby resources as fallback');
     }
 
-    if (suggestedResources.isEmpty && resources.isNotEmpty) {
-      suggestedResources.addAll(resources.take(5));
-      debugPrint('No explicit match, fallback to first 5 resources');
-    }
-
-    final topResources = suggestedResources.take(5).toList();
     String gptResponse;
     try {
       final gptPrompt = """
@@ -246,7 +202,7 @@ User asked: \"$message\"
 About resource: \"${widget.initialResource?.name ?? "general"}\"
 Nearby resources found:
 ${topResources.map((r) => "- ${r.name} at ${r.address} (${r.type})").join("\n")}
-Respond helpfully and specifically about this resource.
+Respond helpfully and specifically. Prioritize the best match(es) for the user's need and explain why in plain language.
 """;
       gptResponse = await getGpt5NanoResponse([
         {"role": "user", "content": gptPrompt}
@@ -261,6 +217,58 @@ Respond helpfully and specifically about this resource.
       text: gptResponse,
       resources: topResources,
     );
+  }
+
+  int _resourceMatchScore(Resource resource, String userMessage) {
+    final query = userMessage.toLowerCase();
+    final text =
+        '${resource.name} ${resource.type} ${resource.address} ${resource.tags.join(' ')}'
+            .toLowerCase();
+
+    var score = 0;
+
+    // Prioritize explicit need keywords.
+    if ((query.contains('food') ||
+            query.contains('meal') ||
+            query.contains('hungry')) &&
+        resource.type.toLowerCase().contains('food')) {
+      score += 8;
+    }
+    if ((query.contains('shelter') ||
+            query.contains('bed') ||
+            query.contains('housing')) &&
+        resource.type.toLowerCase().contains('shelter')) {
+      score += 8;
+    }
+    if ((query.contains('clinic') ||
+            query.contains('medical') ||
+            query.contains('doctor')) &&
+        resource.type.toLowerCase().contains('clinic')) {
+      score += 8;
+    }
+    if ((query.contains('mental') ||
+            query.contains('therapy') ||
+            query.contains('counsel')) &&
+        resource.type.toLowerCase().contains('mental')) {
+      score += 8;
+    }
+
+    // Boost open resources for urgent phrasing.
+    if ((query.contains('now') ||
+            query.contains('tonight') ||
+            query.contains('urgent')) &&
+        resource.openNow) {
+      score += 3;
+    }
+
+    // Generic token overlap.
+    final tokens =
+        query.split(RegExp(r'[^a-z0-9]+')).where((t) => t.length > 2).toSet();
+    for (final token in tokens) {
+      if (text.contains(token)) score += 1;
+    }
+
+    return score;
   }
 
   Future<List<Map<String, dynamic>>> fetchNearbyPlaces(
@@ -436,34 +444,43 @@ Respond helpfully and specifically about this resource.
     switch (type) {
       case 'food':
         return [
-          'What are the hours?',
-          'Is there a food pantry nearby?',
-          'How do I get free meals?'
+          'Do I need ID for food pickup?',
+          'Are there limits on how often I can come?',
+          'Can families pick up together?',
+          'Is this walk-in or appointment only?',
+          'What time should I arrive to avoid running out?'
         ];
       case 'shelter':
         return [
-          'Is there space available?',
-          'What do I need to bring?',
-          'How long can I stay?'
+          'Is there space tonight or a waitlist?',
+          'What ID or documents are required?',
+          'Are there curfews or daytime exit rules?',
+          'Is it safe for women/families/LGBTQ+?',
+          'Can I bring pets or store belongings?'
         ];
       case 'clinic':
         return [
-          'What services are offered?',
-          'Do I need insurance?',
-          'What are the hours?'
+          'Do you accept walk-ins today?',
+          'Do I need insurance or can I be seen free/low-cost?',
+          'What documents should I bring?',
+          'Do you provide language support?',
+          'How long is the wait right now?'
         ];
       case 'mental':
         return [
-          'Is there a counselor available?',
-          'How do I get support?',
-          'Is it confidential?'
+          'Can I get same-day counseling?',
+          'Is support confidential?',
+          'Do you have crisis support after hours?',
+          'Is it walk-in or appointment required?',
+          'Do you support youth or families?'
         ];
       default:
         return [
-          'I need food',
-          'I need shelter',
-          'I need medical help',
-          'I need mental health support',
+          'Which shelter has space tonight?',
+          'Where can I get food with no ID?',
+          'Which clinic takes walk-ins today?',
+          'Which place is safest for families?',
+          'What should I bring before going?',
         ];
     }
   }
@@ -474,16 +491,32 @@ Respond helpfully and specifically about this resource.
       type = widget.initialResource!.type.toLowerCase();
     }
     final suggestions = _getSuggestionsForType(type);
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final s in suggestions.take(3)) ...[
-            _buildQuickButton(s, primary),
-            const SizedBox(width: 8),
-          ]
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Try asking something specific',
+          style: TextStyle(
+            color: Colors.grey[700],
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: suggestions.take(5).length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final suggestion = suggestions[index];
+              return _buildQuickButton(suggestion, primary);
+            },
+          ),
+        ),
+      ],
     );
   }
 

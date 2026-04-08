@@ -57,10 +57,105 @@ class ResourceDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          AnimatedBuilder(
+            animation: OfflineResourcesService(),
+            builder: (context, _) {
+              final isSaved = OfflineResourcesService().isSavedOffline(r);
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSaved
+                            ? Icons.offline_pin
+                            : Icons.download_for_offline,
+                        color: isSaved
+                            ? Colors.green.shade700
+                            : Colors.blueGrey.shade700,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Offline Access',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isSaved
+                                  ? 'Saved for offline use on this device'
+                                  : 'Save this resource for offline use',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final service = OfflineResourcesService();
+                          await service.toggleSavedOffline(r);
+                          if (!context.mounted) return;
+                          final nowSaved = service.isSavedOffline(r);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                nowSaved
+                                    ? 'Saved for offline use.'
+                                    : 'Removed from offline saves.',
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(isSaved ? 'Remove' : 'Save'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             children: r.tags.map((t) => Chip(label: Text(t))).toList(),
           ),
+          if (r.openingHours.trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.schedule, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Opening Hours',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      r.openingHours,
+                      style: const TextStyle(height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
@@ -347,5 +442,62 @@ class FavoritesService extends ChangeNotifier {
     notifyListeners();
     _persistFavoritesToUser();
     _persistCache();
+  }
+}
+
+class OfflineResourcesService extends ChangeNotifier {
+  static final OfflineResourcesService _instance =
+      OfflineResourcesService._internal();
+  factory OfflineResourcesService() => _instance;
+  OfflineResourcesService._internal() {
+    _hydrate();
+  }
+
+  static const _offlineResourcesCacheKey = 'offline_resource_cache_v1';
+
+  final Map<String, Resource> _saved = {};
+
+  List<Resource> get savedResources => _saved.values.toList(growable: false);
+
+  Future<void> _hydrate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_offlineResourcesCacheKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw) as List<dynamic>;
+        for (final entry in decoded) {
+          if (entry is! Map<String, dynamic>) continue;
+          final id = (entry['id'] ?? '').toString();
+          if (id.isEmpty) continue;
+          _saved[id] = Resource.fromMap(id, entry);
+        }
+      } catch (_) {
+        // Ignore cache parse issues.
+      }
+    }
+    notifyListeners();
+  }
+
+  bool isSavedOffline(Resource r) => _saved.containsKey(r.id);
+
+  Future<void> toggleSavedOffline(Resource r) async {
+    if (_saved.containsKey(r.id)) {
+      _saved.remove(r.id);
+    } else {
+      _saved[r.id] = r;
+    }
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    final payload = _saved.values
+        .map((r) => {
+              'id': r.id,
+              ...r.toMap(),
+            })
+        .toList();
+    await prefs.setString(_offlineResourcesCacheKey, jsonEncode(payload));
   }
 }

@@ -43,24 +43,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Future<void> _initializeApp() async {
     bool onboardingComplete = false;
+    bool hasSession = false;
     try {
       onboardingComplete = await ref.read(onboardingCompleteProvider.future);
     } catch (_) {
       onboardingComplete = false;
     }
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      await Future.delayed(const Duration(seconds: 2));
 
-    // Read session as late as possible to avoid racing with auth state restore.
-    var hasSession = Supabase.instance.client.auth.currentSession != null;
-    if (!hasSession) {
-      try {
-        await Supabase.instance.client.auth.onAuthStateChange.first
-            .timeout(const Duration(milliseconds: 1200));
-      } catch (_) {
-        // Ignore timeout/errors and use current known session state.
-      }
+      // Read session as late as possible to avoid racing with auth state restore.
       hasSession = Supabase.instance.client.auth.currentSession != null;
+      if (!hasSession) {
+        try {
+          await Supabase.instance.client.auth.onAuthStateChange.first
+              .timeout(const Duration(milliseconds: 1200));
+        } catch (_) {
+          // Ignore timeout/errors and use current known session state.
+        }
+        hasSession = Supabase.instance.client.auth.currentSession != null;
+      }
+    } catch (e) {
+      debugPrint('Splash init fallback due to startup error: $e');
+      hasSession = false;
     }
 
     if (mounted) {

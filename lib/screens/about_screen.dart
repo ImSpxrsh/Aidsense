@@ -54,7 +54,7 @@ class AboutScreen extends StatelessWidget {
           ),
           _Section(
             'Notes',
-            'Resource availability can change, so users should verify details before visiting. The app focuses on helping people discover support quickly and with less friction.',
+            'Resource availability can change, so users should verify details before visiting. AI guidance may sometimes be incomplete or incorrect and should not be treated as professional, legal, or emergency advice. The app focuses on helping people discover support quickly and with less friction.',
           ),
         ],
       ),

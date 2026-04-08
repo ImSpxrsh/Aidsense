@@ -58,7 +58,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
             _buildSection(
               '2. HOW WE USE YOUR INFORMATION',
-              'We use your information to:\n\n• Provide personalized resource recommendations\n• Show resources near your location\n• Improve our AI chat assistant responses\n• Send important app updates and notifications\n• Analyze usage patterns to improve our service\n• Ensure app security and prevent fraud\n• Comply with legal obligations\n\nWe will NEVER:\n• Sell your personal information to third parties\n• Share your data with resource providers without consent\n• Use your information for advertising purposes\n• Contact you for marketing without permission',
+              'We use your information to:\n\n• Provide personalized resource recommendations\n• Show resources near your location\n• Improve our AI chat assistant responses\n• Send important app updates and notifications\n• Analyze usage patterns to improve our service\n• Ensure app security and prevent fraud\n• Comply with legal obligations\n\nAI Disclaimer:\n• AI responses may sometimes be incomplete or incorrect\n• Users should verify critical details with the resource directly\n• AI output is informational and not legal, medical, or emergency advice\n\nWe will NEVER:\n• Sell your personal information to third parties\n• Share your data with resource providers without consent\n• Use your information for advertising purposes\n• Contact you for marketing without permission',
             ),
             _buildSection(
               '3. INFORMATION SHARING AND DISCLOSURE',

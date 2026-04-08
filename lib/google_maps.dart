@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:location/location.dart';
 import 'dart:math';
+
 import '../models.dart';
 
 class MapPage extends StatefulWidget {
@@ -52,35 +53,14 @@ class MapPageState extends State<MapPage> {
   String? _locationIssue;
 
   final List<Marker> _markers = [];
-  final Set<Polyline> _polylines = {}; // for directions
+  final Set<Polyline> _polylines = {};
 
-  final List<String> images = [
-    'assets/images/person_marker.png',
-    'assets/images/shelter_marker1.png',
-    'assets/images/clinic_marker.png',
-    'assets/images/food_bank_marker.png',
-  ];
-
-  final double _fetchThreshold = 0.2; // km
-
-  List<String> getTagsForType(String type) {
-    switch (type.toLowerCase()) {
-      case 'shelter':
-        return ['Beds', 'Warm meals'];
-      case 'free clinic':
-      case 'clinic':
-        return ['Medical help', 'Checkups'];
-      case 'food bank':
-        return ['Groceries', 'Free meals'];
-      default:
-        return ['Community Support'];
-    }
-  }
+  final double _fetchThreshold = 0.2;
 
   @override
   void initState() {
     super.initState();
-    debugPrint("MapPage initState RUNNING");
+    debugPrint('MapPage initState RUNNING');
     if (widget.initialPosition != null) {
       _userPosition = widget.initialPosition;
     }
@@ -97,7 +77,6 @@ class MapPageState extends State<MapPage> {
   @override
   void didUpdateWidget(MapPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reload markers if resources, searchQuery, or selectedFilter change
     if (widget.resources != oldWidget.resources ||
         widget.searchQuery != oldWidget.searchQuery ||
         widget.selectedFilter != oldWidget.selectedFilter) {
@@ -126,7 +105,6 @@ class MapPageState extends State<MapPage> {
         .asUint8List();
   }
 
-//Load Icons
   Future<void> _loadResourceIcons() async {
     _userIcon = BitmapDescriptor.bytes(
       await getImages('assets/images/person_marker.png', 75),
@@ -164,7 +142,6 @@ class MapPageState extends State<MapPage> {
       _markers.clear();
     });
 
-    // --- User Marker ---
     _markers.add(
       Marker(
         markerId: const MarkerId('user'),
@@ -174,7 +151,6 @@ class MapPageState extends State<MapPage> {
       ),
     );
 
-    // --- Show only resources passed from home_screen (already filtered) ---
     for (final r in widget.resources) {
       final d = distanceInKm(
         _userPosition!.latitude,
@@ -182,7 +158,7 @@ class MapPageState extends State<MapPage> {
         r.latitude,
         r.longitude,
       );
-      String iconKey = _resourceIcons.keys.firstWhere(
+      final iconKey = _resourceIcons.keys.firstWhere(
         (k) => r.type.toLowerCase().contains(k),
         orElse: () => 'other',
       );
@@ -232,60 +208,72 @@ class MapPageState extends State<MapPage> {
           ),
         );
       }
+
       return Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.location_on, size: 34, color: Color(0xFFF48A8A)),
-              const SizedBox(height: 10),
-              const Text(
-                'We need your location to show nearby resources.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _locationIssue ??
-                    'Tap below to detect your current location and load the map.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF4A5568)),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _requestingLocation
-                      ? null
-                      : () => _ensureLocationAndFetch(requestIfNeeded: true),
-                  icon: const Icon(Icons.my_location),
-                  label: Text(
-                    _requestingLocation
-                        ? 'Requesting location...'
-                        : 'Use My Location',
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 420,
+              minHeight: MediaQuery.of(context).size.height * 0.45,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x14000000),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF48A8A),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(46),
-                  ),
-                ),
+                ],
               ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_on,
+                      size: 34, color: Color(0xFFF48A8A)),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'We need your location to show nearby resources.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _locationIssue ??
+                        'Tap below to detect your current location and load the map.',
+                    textAlign: TextAlign.center,
+                    style:
+                        const TextStyle(fontSize: 13, color: Color(0xFF4A5568)),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _requestingLocation
+                          ? null
+                          : () =>
+                              _ensureLocationAndFetch(requestIfNeeded: true),
+                      icon: const Icon(Icons.my_location),
+                      label: Text(
+                        _requestingLocation
+                            ? 'Requesting location...'
+                            : 'Use My Location',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF48A8A),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(46),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -301,15 +289,15 @@ class MapPageState extends State<MapPage> {
           mapType: MapType.normal,
           onMapCreated: (controller) {
             _mapController = controller;
-            if (!_controllerCompleter.isCompleted)
+            if (!_controllerCompleter.isCompleted) {
               _controllerCompleter.complete(controller);
+            }
           },
           zoomControlsEnabled: true,
           zoomGesturesEnabled: true,
           tiltGesturesEnabled: true,
           rotateGesturesEnabled: true,
           myLocationButtonEnabled: false,
-          // Hide POI labels
           style: '''
           [
             {
@@ -339,7 +327,6 @@ class MapPageState extends State<MapPage> {
   }
 
   Future<void> getLocationUpdates() async {
-    // Use position from parent only — single location request avoids timeout conflict
     if (widget.initialPosition != null) {
       if (mounted && _userPosition != widget.initialPosition) {
         setState(() => _userPosition = widget.initialPosition);
