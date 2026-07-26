@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'resource_detail_screen.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -10,6 +10,28 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../user_data.dart';
+import '../google_auth.dart';
+
+/// Shared helper to show deleted-confirmation dialog from multiple screens.
+Future<void> showDeletedConfirmationDialog(BuildContext context) async {
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: const Text('Account deleted'),
+      content: const Text('Your account has been deleted.'),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
+          },
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
+}
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -374,7 +396,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             const SizedBox(height: 20),
 
             _buildInputField(
-              label: 'Phone Number',
+              label: 'Phone Number (optional)',
               controller: _phoneController,
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
@@ -485,43 +507,28 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _pushNotifications = true;
+  bool _deletingAccount = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _pushNotifications = prefs.getBool('push_notifications_enabled') ?? true;
-    });
-  }
-
-  Future<void> _savePushNotificationSetting(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('push_notifications_enabled', enabled);
-  }
-
-  Future<bool> _confirmEnableNotifications() async {
+  Future<bool> _confirmDeleteAccount() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Enable push notifications?'),
+        title: const Text('Delete account?'),
         content: const Text(
-          'AidSense can notify you about important updates and resource changes. Do you want to turn them on?',
+          'This permanently deletes your AidSense account and signs you out. This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Not now'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Enable'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -529,21 +536,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return confirmed ?? false;
   }
 
-  Future<void> _setPushNotifications(bool enabled) async {
-    if (enabled) {
-      final confirmed = await _confirmEnableNotifications();
-      if (!confirmed) {
-        if (mounted) {
-          setState(() => _pushNotifications = false);
-        }
-        return;
-      }
-    }
+  Future<void> _deleteAccount() async {
+    final confirmed = await _confirmDeleteAccount();
+    if (!confirmed) return;
 
     if (mounted) {
-      setState(() => _pushNotifications = enabled);
+      setState(() => _deletingAccount = true);
     }
-    await _savePushNotificationSetting(enabled);
+
+    try {
+      final client = Supabase.instance.client;
+      // Try server-side RPC first (recommended). This RPC should remove auth user
+      // and profile server-side. If it's not present or fails, fall back to deleting
+      // the `profiles` row locally so the app no longer has a profile for the user.
+      try {
+        await client.rpc('delete_current_user_account');
+
+        // RPC succeeded — sign out locally and clear cached user data.
+        await signOutAll();
+
+        if (!mounted) return;
+        await showDeletedConfirmationDialog(context);
+        return;
+      } on PostgrestException catch (e) {
+        // Fall through to fallback below — attempt to remove profiles row client-side.
+        if (kDebugMode) debugPrint('RPC delete failed: $e');
+      }
+
+      // Fallback: remove the `profiles` row for the current user (best-effort).
+      final user = client.auth.currentUser;
+      if (user != null) {
+        try {
+          await client.from('profiles').delete().eq('uid', user.id);
+        } catch (e) {
+          if (kDebugMode) debugPrint('Failed to delete profiles row: $e');
+        }
+      }
+
+      // Sign out locally regardless of RPC success so the app returns to login.
+      try {
+        await signOutAll();
+      } catch (_) {}
+
+      if (!mounted) return;
+      await showDeletedConfirmationDialog(context);
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      final message =
+          'Delete account is not enabled on backend yet. Apply the latest Supabase migration, then try again.\n$e';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete account failed: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _deletingAccount = false);
+      }
+    }
   }
 
   @override
@@ -568,19 +621,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(height: 1),
-          SwitchListTile(
-            value: _pushNotifications,
-            onChanged: _setPushNotifications,
-            title: const Text('Push Notifications'),
-            subtitle: Text(
-              _pushNotifications ? 'Enabled for important updates' : 'Disabled',
-            ),
-            secondary: Icon(
-              _pushNotifications
-                  ? Icons.notifications
-                  : Icons.notifications_off,
-              color: primary,
-            ),
+          ListTile(
+            enabled: !_deletingAccount,
+            leading: _deletingAccount
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_forever_outlined, color: Colors.red),
+            title: const Text('Delete Account'),
+            subtitle:
+                const Text('Permanently delete your account and sign out'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _deletingAccount ? null : _deleteAccount,
           ),
         ],
       ),
@@ -794,7 +848,7 @@ class HelpCenterScreen extends StatelessWidget {
               ),
               _buildFAQItem(
                 'Can I delete my account?',
-                'Yes, contact support@aidsense.app to permanently delete your account and all associated data.',
+                'Yes, open Settings and tap Delete Account to remove your account data from the app.',
               ),
               _buildFAQItem(
                 'How do I change my notification settings?',

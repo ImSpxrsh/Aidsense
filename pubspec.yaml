@@ -1,7 +1,7 @@
 name: aidsense_app
 description: AidSense Flutter app with Supabase Authentication (android, ios, web)
 publish_to: 'none'
-version: 1.0.2+3
+version: 1.0.3+5
 
 environment:
   sdk: ">=2.18.0 <4.0.0"
@@ -10,12 +10,14 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.5.1
-  supabase_flutter: ^2.5.0
+  # Use the Flutter-specific Supabase package so existing Flutter
+  # initialization and `Supabase.instance` usage remain valid.
+  supabase_flutter: ^2.12.4
   shared_preferences: ^2.5.4
 
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
-  cupertino_icons: ^1.0.2
+  cupertino_icons: ^1.0.9
   google_maps_flutter: ^2.13.1
   geolocator: ^14.0.2
   location: ^5.0.0
@@ -23,8 +25,10 @@ dependencies:
   http: ^1.5.0
   flutter_dotenv: ^6.0.0
   flutter_svg: ^2.0.10+1
-  url_launcher: ^6.2.1
+  url_launcher: ^6.3.2
   google_sign_in: ^6.2.2
+  sign_in_with_apple: ^7.0.1
+  crypto: ^3.0.2
 
 
 dev_dependencies:
@@ -38,6 +42,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - .env
     - assets/images/welcome.png
     - assets/images/onboarding_strip.png
     - assets/images/forms_strip.png
@@ -53,4 +58,3 @@ flutter:
     - assets/images/person_marker.png
     - assets/images/mental_health_marker.png
     - assets/images/google_logo.png
-    - .env
