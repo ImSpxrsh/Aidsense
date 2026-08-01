@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../google_auth.dart';
@@ -28,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         final route = ModalRoute.of(context);
         if (route == null || !route.isCurrent) return;
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
       });
     });
   }
@@ -39,14 +40,57 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<bool> _waitForSession() async {
+    const attempts = 10;
+    const delay = Duration(milliseconds: 200);
+    for (var i = 0; i < attempts; i++) {
+      if (Supabase.instance.client.auth.currentSession != null) return true;
+      await Future.delayed(delay);
+    }
+    return Supabase.instance.client.auth.currentSession != null;
+  }
+
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
       await signInWithGoogleForSupabase();
+      if (!mounted) return;
+      if (await _waitForSession()) {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google sign-in failed. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    setState(() => _loading = true);
+    try {
+      await signInWithAppleForSupabase();
+      if (!mounted) return;
+      if (await _waitForSession()) {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+      } else if (kDebugMode) {
+        debugPrint('Apple sign-in: awaiting callback/session establishment...');
+      }
+    } on SocialSignInCancelledException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Apple sign-in cancelled.')),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Google sign-in: $e')));
+            .showSnackBar(SnackBar(content: Text('Apple sign-in: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -95,6 +139,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF56565);
+    final showAppleSignIn =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
       appBar: AppBar(
@@ -102,7 +148,9 @@ class _LoginScreenState extends State<LoginScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
+          },
         ),
         title: const Text(
           'Log In',
@@ -319,6 +367,29 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
+                    if (showAppleSignIn) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: _loading ? null : _signInWithApple,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 52),
+                          foregroundColor: const Color(0xFF2D3748),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.apple, size: 22),
+                            SizedBox(width: 12),
+                            Text('Continue with Apple'),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 32),
 
                     // Sign up link

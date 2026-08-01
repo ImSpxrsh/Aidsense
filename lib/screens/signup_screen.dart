@@ -17,8 +17,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _email = TextEditingController();
   final _pass = TextEditingController();
   final _fullName = TextEditingController();
-  final _mobileNumber = TextEditingController();
-  final _dateOfBirth = TextEditingController();
   bool _loading = false;
   bool _obscurePassword = true;
   StreamSubscription<AuthState>? _authSub;
@@ -113,13 +111,9 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _loading = true);
     try {
       final fullName = _fullName.text.trim();
-      final phone = _mobileNumber.text.trim();
-      final dob = _dateOfBirth.text.trim();
 
       final metadata = <String, dynamic>{
         if (fullName.isNotEmpty) 'full_name': fullName,
-        if (phone.isNotEmpty) 'phone': phone,
-        if (dob.isNotEmpty) 'date_of_birth': dob,
       };
 
       // Sign up with Supabase (metadata is available to triggers / load fallbacks)
@@ -133,8 +127,6 @@ class _SignupScreenState extends State<SignupScreen> {
         UserData.saveUser(
           fullName: fullName,
           email: email,
-          mobile: phone,
-          dateOfBirth: dob,
         );
 
         // Without a session (e.g. "confirm email" enabled), RLS usually blocks writes — keep local data above.
@@ -144,7 +136,6 @@ class _SignupScreenState extends State<SignupScreen> {
               'uid': response.user!.id,
               if (fullName.isNotEmpty) 'fullName': fullName,
               'email': email,
-              if (phone.isNotEmpty) 'phone': phone,
               'favorites': [],
             });
           } catch (e) {
@@ -191,7 +182,13 @@ class _SignupScreenState extends State<SignupScreen> {
         backgroundColor: primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+            }
+          },
         ),
         title: const Text(
           'New Account',
@@ -223,32 +220,14 @@ class _SignupScreenState extends State<SignupScreen> {
               placeholder: 'support@aidsense.app',
             ),
             const SizedBox(height: 20),
-
-            // Mobile Number Field (optional)
-            _buildInputField(
-              label: 'Mobile Number (optional)',
-              controller: _mobileNumber,
-              placeholder: 'XXX-XXX-XXXX',
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                _PhoneNumberFormatter(),
-              ],
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                'We only ask for the details needed to create and sign in to your account.',
+                style: TextStyle(color: Color(0xFF718096), fontSize: 13),
+              ),
             ),
-            const SizedBox(height: 20),
-
-            // Date of Birth Field (optional)
-            _buildInputField(
-              label: 'Date Of Birth (optional)',
-              controller: _dateOfBirth,
-              placeholder: 'DD / MM / YYYY',
-              keyboardType: TextInputType.datetime,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                _DateOfBirthFormatter(),
-              ],
-            ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
 
             // Sign Up Button
             Container(
@@ -455,62 +434,6 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-
-// Phone number formatter
-class _PhoneNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    String formatted = '';
-    if (digits.length >= 3) {
-      formatted += digits.substring(0, 3);
-      if (digits.length >= 6) {
-        formatted += '-' + digits.substring(3, 6);
-        if (digits.length > 6) {
-          formatted += '-' +
-              digits.substring(6, digits.length > 10 ? 10 : digits.length);
-        }
-      } else {
-        formatted += '-' + digits.substring(3);
-      }
-    } else {
-      formatted = digits;
-    }
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
-
-// Date of birth formatter
-class _DateOfBirthFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    String formatted = '';
-    if (digits.length >= 2) {
-      formatted += digits.substring(0, 2);
-      if (digits.length >= 4) {
-        formatted += ' / ' + digits.substring(2, 4);
-        if (digits.length > 4) {
-          formatted += ' / ' +
-              digits.substring(4, digits.length > 8 ? 8 : digits.length);
-        }
-      } else {
-        formatted += ' / ' + digits.substring(2);
-      }
-    } else {
-      formatted = digits;
-    }
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
