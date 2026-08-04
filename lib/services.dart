@@ -9,8 +9,12 @@ class ResourceService {
 
   Stream<List<Resource>> watchResources() {
     try {
-      return client.from('resources').stream(primaryKey: ['id']).map(
-          (data) => data.map((d) => Resource.fromMap(d['id'], d)).toList());
+      return client
+          .from('resources')
+          .stream(primaryKey: ['id'])
+          .order('confidence_score', ascending: false)
+          .map(
+              (data) => data.map((d) => Resource.fromMap(d['id'], d)).toList());
     } catch (_) {
       return Stream.value([]);
     }
@@ -18,7 +22,10 @@ class ResourceService {
 
   Future<List<Resource>> fetchResourcesOnce() async {
     try {
-      final response = await client.from('resources').select();
+      final response = await client
+          .from('resources')
+          .select()
+          .order('confidence_score', ascending: false);
       return (response as List<dynamic>)
           .map((d) => Resource.fromMap(d['id'], d as Map<String, dynamic>))
           .toList();

@@ -69,7 +69,9 @@ class WelcomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(28),
                     ),
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pushNamed(context, '/login'),
+                      onPressed: () {
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
@@ -93,7 +95,9 @@ class WelcomeScreen extends StatelessWidget {
                     width: 280,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pushNamed(context, '/signup'),
+                      onPressed: () {
+                        Navigator.pushReplacementNamed(context, '/signup');
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
                             const Color(0xFFE2E8F0), // Light grayish-blue
@@ -109,17 +113,6 @@ class WelcomeScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  // Credits
-                  const Text(
-                    'Congressional App Challenge NJ-09\nBy Sparsh, Mohammed, Aarya, Arhaan',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFA0AEC0),
-                      height: 1.3,
                     ),
                   ),
                   const SizedBox(height: 20),

@@ -1,1 +1,16 @@
 include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    deprecated_member_use: ignore
+    unnecessary_import: ignore
+
+linter:
+  rules:
+    non_constant_identifier_names: false
+    prefer_conditional_assignment: false
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
+    prefer_interpolation_to_compose_strings: false
+    unnecessary_string_escapes: false
+    use_super_parameters: false

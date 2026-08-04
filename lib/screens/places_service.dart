@@ -1,7 +1,42 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Cache result container
+class CachedResult {
+  final List<PlaceResult> results;
+  final DateTime expiresAt;
+
+  CachedResult({required this.results, required this.expiresAt});
+}
+
+// Simple cache for nearby search results
+class _SearchCache {
+  static final Map<String, CachedResult> _cache = {};
+  static const Duration _cacheDuration = Duration(minutes: 20);
+
+  static CachedResult? get(String key) {
+    final item = _cache[key];
+    if (item == null) return null;
+    if (DateTime.now().isAfter(item.expiresAt)) {
+      _cache.remove(key);
+      return null;
+    }
+    debugPrint('[CACHE] HIT for $key');
+    return item;
+  }
+
+  static void set(String key, List<PlaceResult> results) {
+    _cache[key] = CachedResult(
+      results: results,
+      expiresAt: DateTime.now().add(_cacheDuration),
+    );
+    debugPrint('[CACHE] SET $key (expires in 20min)');
+  }
+}
 
 // Model for a Place
 class PlaceResult {
@@ -101,6 +136,14 @@ class _EligibilityProfile {
 
 class PlacesService {
   static final _apiKey = dotenv.env['MAPS_API_KEY'];
+  static const double _radiusMeters = 2000;
+  static final bool _supabaseFallbackEnabled =
+      (dotenv.env['ENABLE_SUPABASE_FALLBACK'] ?? 'false').toLowerCase() ==
+          'true';
+  static final bool _aiEnrichmentEnabled =
+      (dotenv.env['ENABLE_AI_ENRICHMENT'] ?? 'false').toLowerCase() == 'true';
+  static final bool _googleDetailsEnabled =
+      (dotenv.env['ENABLE_GOOGLE_DETAILS'] ?? 'true').toLowerCase() == 'true';
 
   // Map your keywords to Google supported types
   static const Map<String, String> typeMap = {
@@ -111,13 +154,174 @@ class PlacesService {
     'food bank': 'grocery_or_supermarket',
   };
 
-  // Fetch nearby places
+  // Fetch nearby places WITH CACHING
   static Future<List<PlaceResult>> fetchNearby({
     required double lat,
     required double lng,
-    required String keyword, // 'shelter', 'clinic', etc.
+    required String keyword,
   }) async {
-    final type = typeMap[keyword.toLowerCase()] ?? '';
+    // Check cache first
+    final cacheKey =
+        '${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}_$keyword';
+    final cached = _SearchCache.get(cacheKey);
+    if (cached != null) return cached.results;
+
+    // Google-first search for higher data quality with cache + lazy details.
+    final googleResults = await _fetchNearbyFromAPI(
+      lat: lat,
+      lng: lng,
+      keyword: keyword,
+    ).timeout(const Duration(seconds: 15), onTimeout: () {
+      debugPrint('Google nearby timed out for "$keyword"');
+      return const <PlaceResult>[];
+    });
+    if (googleResults.isNotEmpty) {
+      _SearchCache.set(cacheKey, googleResults);
+      return googleResults;
+    }
+
+    if (!_supabaseFallbackEnabled) {
+      debugPrint(
+          'Google returned no resources for "$keyword" and Supabase fallback is disabled.');
+      _SearchCache.set(cacheKey, const <PlaceResult>[]);
+      return const <PlaceResult>[];
+    }
+
+    final results = await _fetchNearbyFromSupabase(
+      lat: lat,
+      lng: lng,
+      keyword: keyword,
+    ).timeout(const Duration(seconds: 15), onTimeout: () {
+      debugPrint('Supabase fallback timed out for "$keyword"');
+      return const <PlaceResult>[];
+    });
+    _SearchCache.set(cacheKey, results);
+    return results;
+  }
+
+  static Future<List<PlaceResult>> _fetchNearbyFromSupabase({
+    required double lat,
+    required double lng,
+    required String keyword,
+  }) async {
+    try {
+      final normalizedKeyword = keyword.toLowerCase();
+      final mappedType = _normalizeKeywordToCategory(normalizedKeyword);
+
+      final latDelta = _radiusMeters / 111000.0;
+      final lngDelta = _radiusMeters /
+          (111000.0 * math.max(0.1, math.cos(lat * math.pi / 180.0)));
+
+      final response = mappedType == null
+          ? await Supabase.instance.client
+              .from('resources')
+              .select(
+                  'id,name,type,address,latitude,longitude,opening_hours,open_now,walk_in,appointment_required,id_required,cost,families_welcome,women_only,youth_friendly,phone,website,confidence_score')
+              .gte('latitude', lat - latDelta)
+              .lte('latitude', lat + latDelta)
+              .gte('longitude', lng - lngDelta)
+              .lte('longitude', lng + lngDelta)
+              .order('confidence_score', ascending: false)
+              .limit(100)
+          : await Supabase.instance.client
+              .from('resources')
+              .select(
+                  'id,name,type,address,latitude,longitude,opening_hours,open_now,walk_in,appointment_required,id_required,cost,families_welcome,women_only,youth_friendly,phone,website,confidence_score')
+              .eq('type', mappedType)
+              .gte('latitude', lat - latDelta)
+              .lte('latitude', lat + latDelta)
+              .gte('longitude', lng - lngDelta)
+              .lte('longitude', lng + lngDelta)
+              .order('confidence_score', ascending: false)
+              .limit(100);
+
+      final List<PlaceResult> results = [];
+      for (final row in response) {
+        final rowLat = (row['latitude'] as num?)?.toDouble();
+        final rowLng = (row['longitude'] as num?)?.toDouble();
+        if (rowLat == null || rowLng == null) continue;
+
+        if (_haversineMeters(lat, lng, rowLat, rowLng) > _radiusMeters) {
+          continue;
+        }
+
+        results.add(
+          PlaceResult(
+            placeId: (row['id'] ?? '').toString(),
+            name: (row['name'] ?? 'Unknown').toString(),
+            type: (row['type'] ?? mappedType ?? keyword).toString(),
+            lat: rowLat,
+            lng: rowLng,
+            address: (row['address'] ?? '').toString(),
+            openingHours: (row['opening_hours'] ?? '').toString(),
+            openNow: row['open_now'] == true,
+            walkIn: row['walk_in'] == true,
+            appointmentRequired: row['appointment_required'] == true,
+            idRequired: row['id_required'] == true,
+            cost: (row['cost'] ?? 'unknown').toString(),
+            familiesWelcome: row['families_welcome'] == true,
+            womenOnly: row['women_only'] == true,
+            youthFriendly: row['youth_friendly'] == true,
+            phone: (row['phone'] ?? '').toString(),
+            website: (row['website'] ?? '').toString(),
+          ),
+        );
+      }
+
+      results.sort((a, b) {
+        final da = _haversineMeters(lat, lng, a.lat, a.lng);
+        final db = _haversineMeters(lat, lng, b.lat, b.lng);
+        return da.compareTo(db);
+      });
+
+      if (results.isNotEmpty) {
+        debugPrint('Supabase nearby returned ${results.length} for "$keyword"');
+      }
+      return results;
+    } catch (e) {
+      debugPrint('Supabase nearby error for "$keyword": $e');
+      return const <PlaceResult>[];
+    }
+  }
+
+  static String? _normalizeKeywordToCategory(String keyword) {
+    if (keyword.contains('shelter')) return 'shelter';
+    if (keyword.contains('food')) return 'food';
+    if (keyword.contains('mental')) return 'mental_health';
+    if (keyword.contains('clinic') || keyword.contains('health')) {
+      return 'clinic';
+    }
+    return null;
+  }
+
+  static double _haversineMeters(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
+    const earthRadius = 6371000.0;
+    final dLat = _toRad(lat2 - lat1);
+    final dLng = _toRad(lng2 - lng1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRad(lat1)) *
+            math.cos(_toRad(lat2)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  static double _toRad(double deg) => deg * (math.pi / 180.0);
+
+  // Actual API call (not cached)
+  static Future<List<PlaceResult>> _fetchNearbyFromAPI({
+    required double lat,
+    required double lng,
+    required String keyword,
+  }) async {
+    final normalizedKeyword = keyword.toLowerCase();
+    final type = _googleTypeForKeyword(normalizedKeyword);
     final url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
         '?location=$lat,$lng'
         '&radius=2000' // 2 km
@@ -133,7 +337,17 @@ class PlacesService {
       final data = json.decode(res.body) as Map<String, dynamic>;
 
       if (res.statusCode != 200 || data['status'] != 'OK') {
-        debugPrint('Places API error: ${data['status']}');
+        final status = data['status']?.toString() ?? 'unknown';
+        final errorMessage = data['error_message']?.toString();
+        if (status == 'OVER_QUERY_LIMIT' || status == 'RESOURCE_EXHAUSTED') {
+          debugPrint(
+              'Places API quota exceeded: $status ${errorMessage ?? ''}');
+        } else if (status == 'REQUEST_DENIED') {
+          debugPrint(
+              'Places API request denied: $status ${errorMessage ?? ''}');
+        } else {
+          debugPrint('Places API error: $status ${errorMessage ?? ''}');
+        }
         return [];
       }
 
@@ -151,18 +365,24 @@ class PlacesService {
           String address = '';
           if (p['formatted_address'] != null &&
               p['formatted_address'].toString().isNotEmpty) {
-            address = p['formatted_address'];
+            address = p['formatted_address'].toString();
           } else if (p['vicinity'] != null &&
               p['vicinity'].toString().isNotEmpty) {
-            address = p['vicinity'];
+            address = p['vicinity'].toString();
           }
+          final inferredType = _inferCategoryFromGooglePlace(p, keyword);
+          final openingHoursObj = p['opening_hours'];
+          final nearbyOpenNow = openingHoursObj is Map<String, dynamic>
+              ? openingHoursObj['open_now'] == true
+              : false;
           final place = PlaceResult(
             placeId: p['place_id'] as String? ?? '',
             name: p['name'] as String? ?? 'Unknown',
             lat: (loc['lat'] as num?)?.toDouble() ?? 0.0,
             lng: (loc['lng'] as num?)?.toDouble() ?? 0.0,
-            type: keyword,
+            type: inferredType,
             address: address,
+            openNow: nearbyOpenNow,
           );
           results.add(place);
         } catch (e) {
@@ -178,10 +398,89 @@ class PlacesService {
     }
   }
 
-  // Fetch details like phone, website, address
+  static String _inferCategoryFromGooglePlace(
+    Map<String, dynamic> place,
+    String keyword,
+  ) {
+    final types = (place['types'] as List?)
+            ?.map((e) => e.toString().toLowerCase())
+            .toList() ??
+        const <String>[];
+    final name = (place['name'] as String? ?? '').toLowerCase();
+    final context = name;
+
+    if (types.contains('lodging') ||
+        types.contains('homeless_shelter') ||
+        context.contains('shelter') ||
+        context.contains('homeless')) {
+      return 'shelter';
+    }
+    if (types.contains('food') ||
+        types.contains('meal_takeaway') ||
+        types.contains('meal_delivery') ||
+        types.contains('grocery_or_supermarket') ||
+        context.contains('food bank') ||
+        context.contains('soup kitchen')) {
+      return 'food';
+    }
+    if (context.contains('mental') ||
+        context.contains('counsel') ||
+        context.contains('therapy') ||
+        context.contains('psychiat') ||
+        context.contains('psycholog')) {
+      return 'other';
+    }
+    if (types.contains('hospital') ||
+        types.contains('doctor') ||
+        types.contains('health') ||
+        context.contains('clinic')) {
+      return 'clinic';
+    }
+    return 'other';
+  }
+
+  static String _googleTypeForKeyword(String keyword) {
+    // Broad multi-service queries perform better without a hard type filter.
+    if (keyword.contains('food bank') ||
+        keyword.contains('soup kitchen') ||
+        keyword.contains('mental health') ||
+        keyword.contains('community health')) {
+      return '';
+    }
+    if (keyword.contains('shelter')) return 'lodging';
+    if (keyword.contains('food')) return 'food';
+    if (keyword.contains('mental')) return 'health';
+    if (keyword.contains('clinic') || keyword.contains('health')) {
+      return 'doctor';
+    }
+    return typeMap[keyword] ?? '';
+  }
+
+  // Fetch details like phone, website (only call when user views resource)
   static Future<PlaceResult> fetchDetails(PlaceResult place) async {
+    // Skip only if we already have all required details.
+    if (place.phone.isNotEmpty &&
+        place.website.isNotEmpty &&
+        place.openingHours.isNotEmpty) {
+      return place;
+    }
+
+    if (_apiKey == null || _apiKey!.isEmpty) {
+      return place;
+    }
+    if (!_googleDetailsEnabled) {
+      return place;
+    }
+
+    final detailsPlaceId = _isUuid(place.placeId)
+        ? await _findGooglePlaceIdForResource(place)
+        : place.placeId;
+    if (detailsPlaceId == null || detailsPlaceId.isEmpty) {
+      return place;
+    }
+
     final url = 'https://maps.googleapis.com/maps/api/place/details/json'
-        '?place_id=${place.placeId}'
+        '?place_id=$detailsPlaceId'
         '&fields=name,formatted_address,formatted_phone_number,website,opening_hours,current_opening_hours'
         '&key=$_apiKey';
 
@@ -191,7 +490,21 @@ class PlacesService {
       final data = json.decode(res.body) as Map<String, dynamic>;
 
       if (res.statusCode != 200 || data['status'] != 'OK') {
-        debugPrint('Details API error for ${place.name}: ${data['status']}');
+        final status = data['status']?.toString() ?? 'unknown';
+        final errorMessage = data['error_message']?.toString();
+        if (status == 'OVER_QUERY_LIMIT' || status == 'RESOURCE_EXHAUSTED') {
+          debugPrint(
+            'Details API quota exceeded for ${place.name}: $status ${errorMessage ?? ''}',
+          );
+        } else if (status == 'REQUEST_DENIED') {
+          debugPrint(
+            'Details API request denied for ${place.name}: $status ${errorMessage ?? ''}',
+          );
+        } else {
+          debugPrint(
+            'Details API error for ${place.name}: $status ${errorMessage ?? ''}',
+          );
+        }
         return place;
       }
 
@@ -199,11 +512,12 @@ class PlacesService {
       if (result == null) return place;
 
       final hours = _extractOpeningHours(result);
+      final openNow = _extractOpenNow(result) || _isAlwaysOpen(hours);
       final profile = await _inferEligibility(place: place, details: result);
 
-      return place.copyWith(
+      final enriched = place.copyWith(
         openingHours: hours,
-        openNow: _extractOpenNow(result),
+        openNow: openNow,
         walkIn: profile.walkIn,
         appointmentRequired: profile.appointmentRequired,
         idRequired: profile.idRequired,
@@ -215,9 +529,142 @@ class PlacesService {
         website: result['website'] as String? ?? '',
         address: result['formatted_address'] as String? ?? '',
       );
+
+      if (_isUuid(place.placeId)) {
+        await _persistEnrichedResource(
+            placeId: place.placeId, enriched: enriched);
+      }
+
+      return enriched;
     } catch (e) {
       debugPrint('Details error for ${place.name}: $e');
       return place;
+    }
+  }
+
+  static bool _isUuid(String value) {
+    final uuid = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+    );
+    return uuid.hasMatch(value);
+  }
+
+  static Future<String?> _findGooglePlaceIdForResource(
+      PlaceResult place) async {
+    final url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+        '?location=${place.lat},${place.lng}'
+        '&radius=350'
+        '&keyword=${Uri.encodeComponent(place.name)}'
+        '&key=$_apiKey';
+
+    try {
+      final res =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final data = json.decode(res.body) as Map<String, dynamic>;
+      if (res.statusCode != 200 || data['status'] != 'OK') return null;
+
+      final results = data['results'];
+      if (results is! List) return null;
+
+      String? bestPlaceId;
+      double bestScore = -1;
+
+      for (final item in results) {
+        if (item is! Map<String, dynamic>) continue;
+        final candidateId = item['place_id']?.toString();
+        final candidateName = item['name']?.toString() ?? '';
+        final loc = (item['geometry'] as Map<String, dynamic>?)?['location']
+            as Map<String, dynamic>?;
+        final cLat = (loc?['lat'] as num?)?.toDouble();
+        final cLng = (loc?['lng'] as num?)?.toDouble();
+        if (candidateId == null || cLat == null || cLng == null) continue;
+
+        final distance = _haversineMeters(place.lat, place.lng, cLat, cLng);
+        final nameScore = _nameSimilarity(place.name, candidateName);
+
+        final score = nameScore - (distance / 1000.0);
+        if (score > bestScore) {
+          bestScore = score;
+          bestPlaceId = candidateId;
+        }
+      }
+
+      return bestPlaceId;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static double _nameSimilarity(String a, String b) {
+    final lhs = a.toLowerCase().trim();
+    final rhs = b.toLowerCase().trim();
+    if (lhs == rhs) return 2.0;
+    if (lhs.contains(rhs) || rhs.contains(lhs)) return 1.5;
+
+    final lhsWords =
+        lhs.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toSet();
+    final rhsWords =
+        rhs.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toSet();
+    if (lhsWords.isEmpty || rhsWords.isEmpty) return 0.0;
+
+    final overlap = lhsWords.intersection(rhsWords).length;
+    return overlap / math.max(lhsWords.length, rhsWords.length);
+  }
+
+  static int _confidenceScore({
+    required String phone,
+    required String openingHours,
+    required String website,
+    required bool fromVerifiedDataset,
+    required bool enrichedByGoogle,
+  }) {
+    var score = 0;
+    if (phone.trim().isNotEmpty) score += 1;
+    if (openingHours.trim().isNotEmpty) score += 1;
+    if (website.trim().isNotEmpty) score += 1;
+    if (fromVerifiedDataset) score += 2;
+    if (enrichedByGoogle) score += 1;
+    return score;
+  }
+
+  static Future<void> _persistEnrichedResource({
+    required String placeId,
+    required PlaceResult enriched,
+  }) async {
+    try {
+      final row = await Supabase.instance.client
+          .from('resources')
+          .select('from_verified_dataset')
+          .eq('id', placeId)
+          .maybeSingle();
+
+      final fromVerifiedDataset = row?['from_verified_dataset'] == true;
+      final score = _confidenceScore(
+        phone: enriched.phone,
+        openingHours: enriched.openingHours,
+        website: enriched.website,
+        fromVerifiedDataset: fromVerifiedDataset,
+        enrichedByGoogle: true,
+      );
+
+      await Supabase.instance.client.from('resources').update({
+        'phone': enriched.phone,
+        'website': enriched.website,
+        'opening_hours': enriched.openingHours,
+        'open_now': enriched.openNow,
+        'walk_in': enriched.walkIn,
+        'appointment_required': enriched.appointmentRequired,
+        'id_required': enriched.idRequired,
+        'cost': enriched.cost,
+        'families_welcome': enriched.familiesWelcome,
+        'women_only': enriched.womenOnly,
+        'youth_friendly': enriched.youthFriendly,
+        'address': enriched.address,
+        'enriched_by_google': true,
+        'confidence_score': score,
+      }).eq('id', placeId);
+    } catch (e) {
+      debugPrint('Failed to persist enrichment for $placeId: $e');
     }
   }
 
@@ -252,6 +699,14 @@ class PlacesService {
     return false;
   }
 
+  static bool _isAlwaysOpen(String openingHours) {
+    final normalized = openingHours.toLowerCase();
+    return normalized.contains('open 24 hours') ||
+        normalized.contains('24 hours open') ||
+        normalized.contains('open 24/7') ||
+        normalized.contains('24/7');
+  }
+
   static String _weekdayTextToString(dynamic value) {
     if (value is! Map<String, dynamic>) return '';
     final weekdayText = value['weekday_text'];
@@ -271,6 +726,7 @@ class PlacesService {
     required Map<String, dynamic> details,
   }) async {
     final heuristic = _heuristicEligibility(place, details);
+    if (!_aiEnrichmentEnabled) return heuristic;
     final apiKey = dotenv.env['OPENAI_API_KEY'];
     if (apiKey == null || apiKey.trim().isEmpty) return heuristic;
 

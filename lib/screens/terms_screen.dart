@@ -41,7 +41,7 @@ class TermsOfServiceScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
-                      'Last updated: September 2025',
+                      'By using AidSense, you agree to these terms and conditions.',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -69,35 +69,47 @@ class TermsOfServiceScreen extends StatelessWidget {
               'You agree to use AidSense only for lawful purposes and in accordance with these Terms. You may NOT:\n\n• Provide false or misleading information\n• Attempt to gain unauthorized access to our systems\n• Use the App for any commercial or business purposes\n• Harass, abuse, or harm other users or service providers\n• Upload malicious code or attempt to disrupt the service\n• Violate any applicable local, state, or federal laws',
             ),
             _buildSection(
-              '5. RESOURCE INFORMATION DISCLAIMER',
+              '5. NO PROFESSIONAL ADVICE',
+              'AidSense is for informational purposes only. We do not provide legal, medical, financial, housing, emergency, or professional advice. Any reliance on information in the App is at your own risk. You should independently verify all critical information before acting on it.',
+            ),
+            _buildSection(
+              '6. RESOURCE INFORMATION DISCLAIMER',
               'AidSense aggregates information about community resources from various sources. We strive for accuracy but cannot guarantee that:\n\n• Resource information is always current or complete\n• Services are available when you visit\n• Eligibility requirements haven\'t changed\n• Contact information is up to date\n\nALWAYS verify information directly with service providers before visiting. We are not responsible for any inconvenience caused by outdated information.',
             ),
             _buildSection(
-              '6. PRIVACY AND DATA PROTECTION',
+              '7. PRIVACY AND DATA PROTECTION',
               'Your privacy is important to us. Our collection and use of personal information is governed by our Privacy Policy, which is incorporated into these Terms by reference. By using AidSense, you consent to the collection and use of your information as described in our Privacy Policy.',
             ),
             _buildSection(
-              '7. INTELLECTUAL PROPERTY RIGHTS',
+              '8. INTELLECTUAL PROPERTY RIGHTS',
               'The AidSense App, including all content, features, and functionality, is owned by AidSense Inc. and is protected by United States and international copyright, trademark, and other intellectual property laws.\n\nYou are granted a limited, non-exclusive, non-transferable license to use the App for personal, non-commercial purposes.',
             ),
             _buildSection(
-              '8. LIMITATION OF LIABILITY',
-              'TO THE MAXIMUM EXTENT PERMITTED BY LAW, AIDSENSE SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR OTHER INTANGIBLE LOSSES.\n\nOur total liability to you for all claims shall not exceed \$100 or the amount you paid to use our service (currently \$0), whichever is greater.',
+              '9. DISCLAIMER OF WARRANTIES',
+              'TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE APP IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF ACCURACY, FITNESS FOR A PARTICULAR PURPOSE, AVAILABILITY, OR NON-INFRINGEMENT.\n\nWe do not warrant that the App will be uninterrupted, secure, or error-free.',
             ),
             _buildSection(
-              '9. TERMINATION',
-              'We may terminate or suspend your account and access to the App immediately, without prior notice, if you breach these Terms.\n\nYou may terminate your account at any time by contacting support@aidsense.app. Upon termination, your right to use the App will cease immediately.',
+              '10. LIMITATION OF LIABILITY',
+              'TO THE MAXIMUM EXTENT PERMITTED BY LAW, AIDSENSE SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES.\n\nOur total liability for any claim arising out of or relating to the App will not exceed the greater of \$100 or the amount you paid us in the 12 months before the claim arose, to the extent permitted by law.',
             ),
             _buildSection(
-              '10. CHANGES TO TERMS',
+              '11. INDEMNIFICATION',
+              'You agree to defend, indemnify, and hold harmless AidSense, its affiliates, and their respective officers, directors, employees, and contractors from and against any claims, liabilities, damages, losses, and expenses (including reasonable attorneys\' fees) arising out of or related to your use of the App, your violation of these Terms, or your violation of any law or third-party right.',
+            ),
+            _buildSection(
+              '12. TERMINATION',
+              'We may suspend or terminate your account and access to the App immediately, with or without notice, if we believe you have violated these Terms or may create risk or liability for AidSense or other users.\n\nYou may terminate your account at any time by contacting support@aidsense.app. Upon termination, your right to use the App will cease immediately.',
+            ),
+            _buildSection(
+              '13. CHANGES TO TERMS',
               'We reserve the right to modify these Terms at any time. We will notify users of significant changes through the App or via email. Continued use of the App after changes constitutes acceptance of the new Terms.',
             ),
             _buildSection(
-              '11. GOVERNING LAW',
-              'These Terms are governed by and construed in accordance with the laws of the State of New Jersey, United States, without regard to conflict of law principles.\n\nAny legal action must be brought in the state or federal courts located in New Jersey.',
+              '14. GOVERNING LAW',
+              'These Terms are governed by and construed in accordance with the laws of the State of New Jersey, United States, without regard to conflict of law principles.\n\nAny legal action must be brought in the state or federal courts located in New Jersey, unless applicable law requires otherwise.',
             ),
             _buildSection(
-              '12. CONTACT INFORMATION',
+              '15. CONTACT INFORMATION',
               'If you have questions about these Terms, please contact support@aidsense.app through the app or by email.',
             ),
             const SizedBox(height: 32),

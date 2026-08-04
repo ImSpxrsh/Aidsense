@@ -93,7 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
           "• Is it safe and accessible for my needs?";
     } else {
       message =
-          "Hello! I'm here to help you find resources in your community. You can ask me things like:\n\n• 'I need food tonight'\n• 'Where can I find shelter?'\n• 'I need medical help'\n• 'Show me pharmacies nearby'\n• 'I need mental health support'\n\n**Crisis Support Available 24/7** 🆘\nIf you're in crisis, I can provide immediate helpline numbers and connect you to professional support.\n\nWhat can I help you with today?";
+          "Hello! I'm here to help you find resources in your community. You can ask me things like:\n\n• 'I need food tonight'\n• 'Where can I find shelter?'\n• 'I need medical help'\n• 'Show me pharmacies nearby'\n\nWhat can I help you with today?";
     }
 
     _messages.add(ChatMessage(
@@ -244,12 +244,6 @@ Respond helpfully and specifically. Prioritize the best match(es) for the user's
             query.contains('medical') ||
             query.contains('doctor')) &&
         resource.type.toLowerCase().contains('clinic')) {
-      score += 8;
-    }
-    if ((query.contains('mental') ||
-            query.contains('therapy') ||
-            query.contains('counsel')) &&
-        resource.type.toLowerCase().contains('mental')) {
       score += 8;
     }
 
@@ -465,14 +459,6 @@ Respond helpfully and specifically. Prioritize the best match(es) for the user's
           'What documents should I bring?',
           'Do you provide language support?',
           'How long is the wait right now?'
-        ];
-      case 'mental':
-        return [
-          'Can I get same-day counseling?',
-          'Is support confidential?',
-          'Do you have crisis support after hours?',
-          'Is it walk-in or appointment required?',
-          'Do you support youth or families?'
         ];
       default:
         return [

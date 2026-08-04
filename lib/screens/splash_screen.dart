@@ -51,7 +51,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
 
     try {
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(milliseconds: 450));
 
       // Read session as late as possible to avoid racing with auth state restore.
       hasSession = Supabase.instance.client.auth.currentSession != null;

@@ -42,7 +42,6 @@ class ProfileEditScreen extends StatefulWidget {
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _zipCodeController = TextEditingController();
   bool _loading = false;
 
@@ -51,7 +50,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     super.initState();
     _fullNameController.text = UserData.fullName;
     _emailController.text = UserData.email;
-    _phoneController.text = UserData.mobile;
     _zipCodeController.text = '07302';
   }
 
@@ -59,7 +57,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _zipCodeController.dispose();
     super.dispose();
   }
@@ -76,14 +73,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
       final fullName = _fullNameController.text.trim();
       final email = _emailController.text.trim();
-      final phone = _phoneController.text.trim();
 
       final payload = {
         'uid': user.id,
         'id': user.id,
         'fullName': fullName,
         'email': email,
-        'phone': phone,
         'favorites': UserData.favorites,
       };
 
@@ -105,7 +100,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           UserAttributes(
             data: {
               'full_name': fullName,
-              'phone': phone,
               'email': email,
             },
           ),
@@ -395,12 +389,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             ),
             const SizedBox(height: 20),
 
-            _buildInputField(
-              label: 'Phone Number (optional)',
-              controller: _phoneController,
-              icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-            ),
             const SizedBox(height: 20),
 
             _buildInputField(

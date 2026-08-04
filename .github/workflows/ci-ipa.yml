@@ -1,0 +1,96 @@
+name: Build and Upload iOS to TestFlight
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build IPA (unsigned)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods -N || true
+          pod --version || true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: iOS pod install
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Build unsigned IPA
+        run: flutter build ipa --export-method app-store --no-codesign
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa
+
+  upload:
+    name: Sign & Upload to TestFlight
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download IPA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-ipa
+
+      - name: Import code signing cert & provisioning profile
+        uses: apple-actions/import-codesign-certs@v1
+        with:
+          p12-base64: ${{ secrets.P12_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+          provisioning-profile-base64: ${{ secrets.PROFILE_BASE64 }}
+
+      - name: Install fastlane
+        run: sudo gem install fastlane -NV
+
+      - name: Create App Store Connect API key file
+        run: |
+          printf '%s' "${{ secrets.APP_STORE_CONNECT_KEY }}" > AuthKey.p8
+          python3 - <<'PY' > api_key.json
+import json,sys
+key=open('AuthKey.p8').read()
+data={
+  "key_id":"${{ secrets.APP_STORE_CONNECT_KEY_ID }}",
+  "issuer_id":"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}",
+  "key": key
+}
+print(json.dumps(data))
+PY
+
+      - name: Upload to TestFlight (fastlane pilot)
+        env:
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -e
+          IPA_PATH=$(ls build/ios/ipa/*.ipa | head -n1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA found in build/ios/ipa"; exit 1
+          fi
+          fastlane pilot upload --ipa "$IPA_PATH" --api_key_path api_key.json
+
+# Required repository secrets:
+# - P12_BASE64: base64 of the exported signing certificate (.p12)
+# - P12_PASSWORD: password for the .p12 file
+# - PROFILE_BASE64: base64 of the provisioning profile (.mobileprovision)
+# - APP_STORE_CONNECT_KEY: contents of the .p8 file (raw, with newlines)
+# - APP_STORE_CONNECT_KEY_ID: App Store Connect Key ID (e.g. ABCDE12345)
+# - APP_STORE_CONNECT_ISSUER_ID: Issuer ID (GUID)
+# - APP_SPECIFIC_PASSWORD: (optional) Apple app-specific password for the Apple ID used to upload

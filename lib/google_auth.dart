@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -25,8 +29,11 @@ class AccountNotFoundForGoogleSignIn implements Exception {
 
 bool _oauthInProgress = false;
 
-/// Opens OAuth in Safari View Controller (iOS) instead of the external browser.
-const LaunchMode _oauthLaunchMode = LaunchMode.inAppBrowserView;
+String _generateRawNonce([int length = 32]) {
+  final random = Random.secure();
+  final bytes = List<int>.generate(length, (_) => random.nextInt(256));
+  return base64UrlEncode(bytes).replaceAll('=', '');
+}
 
 class SocialSignInCancelledException implements Exception {
   final String message;
@@ -113,7 +120,7 @@ Future<void> signInWithGoogleForSupabase({
       await supabase.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: supabaseOAuthRedirectUrl(),
-        authScreenLaunchMode: _oauthLaunchMode,
+        authScreenLaunchMode: LaunchMode.inAppBrowserView,
       );
       return;
     }
@@ -217,7 +224,7 @@ Future<void> signInWithAppleForSupabase() async {
       await supabase.auth.signInWithOAuth(
         OAuthProvider.apple,
         redirectTo: supabaseOAuthRedirectUrl(),
-        authScreenLaunchMode: _oauthLaunchMode,
+        authScreenLaunchMode: LaunchMode.inAppBrowserView,
       );
       return;
     }
@@ -227,24 +234,84 @@ Future<void> signInWithAppleForSupabase() async {
       await supabase.auth.signInWithOAuth(
         OAuthProvider.apple,
         redirectTo: supabaseOAuthRedirectUrl(),
-        authScreenLaunchMode: _oauthLaunchMode,
+        authScreenLaunchMode: LaunchMode.inAppBrowserView,
       );
       return;
     }
 
+    final rawNonce = _generateRawNonce();
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+    late AuthorizationCredentialAppleID credential;
     try {
-      await supabase.auth.signInWithOAuth(
-        OAuthProvider.apple,
-        redirectTo: supabaseOAuthRedirectUrl(),
-        authScreenLaunchMode: _oauthLaunchMode,
+      credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
       );
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Apple OAuth start failed: $e');
+      if (e is SignInWithAppleAuthorizationException &&
+          e.code == AuthorizationErrorCode.canceled) {
+        throw const SocialSignInCancelledException('Apple sign-in cancelled.');
       }
-      throw StateError(
-        'Could not start Apple sign-in. Check the Supabase Apple OAuth redirect URL and app URL scheme. ($e)',
+      if (kDebugMode) {
+        debugPrint('Apple sign-in credential error: $e');
+      }
+      throw StateError('Apple sign-in failed. Please try again.');
+    }
+
+    final idToken = credential.identityToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError('No identity token returned from Apple sign-in');
+    }
+
+    try {
+      await supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+        nonce: rawNonce,
       );
+      final hasSession = await _waitForSupabaseSession();
+      if (!hasSession) {
+        throw StateError(
+          'Apple sign-in succeeded but the app session was not established. Please try again.',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Apple Supabase sign-in error: $e');
+      }
+      rethrow;
+    }
+
+    try {
+      await UserData.ensureProfileRow();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Warning: Could not create profile row: $e');
+      }
+    }
+
+    if (credential.givenName != null || credential.familyName != null) {
+      final nameParts = <String>[];
+      if (credential.givenName != null) nameParts.add(credential.givenName!);
+      if (credential.familyName != null) nameParts.add(credential.familyName!);
+      final fullName = nameParts.join(' ');
+      try {
+        await supabase.auth.updateUser(
+          UserAttributes(data: {
+            'full_name': fullName,
+            'given_name': credential.givenName,
+            'family_name': credential.familyName,
+          }),
+        );
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Warning: Could not update user metadata: $e');
+        }
+      }
     }
   } finally {
     _oauthInProgress = false;
