@@ -32,6 +32,8 @@ class MapPage extends StatefulWidget {
 }
 
 class MapPageState extends State<MapPage> {
+  static const LatLng _fallbackPosition = LatLng(37.0902, -95.7129);
+
   GoogleMapController? _mapController;
   final Location _locationController = Location();
   StreamSubscription<LocationData>? _locationSubscription;
@@ -49,7 +51,7 @@ class MapPageState extends State<MapPage> {
   LatLng? _lastFetchedLocation;
   bool _isFirstLocation = true;
   bool _requestingLocation = false;
-  bool _hasCompletedInitialLocationCheck = false;
+  bool _autoLocationAttempted = false;
   String? _locationIssue;
 
   final List<Marker> _markers = [];
@@ -63,9 +65,23 @@ class MapPageState extends State<MapPage> {
     debugPrint('MapPage initState RUNNING');
     if (widget.initialPosition != null) {
       _userPosition = widget.initialPosition;
+      // Ensure we attempt to center the map when an initial position is
+      // provided (for example, after login). Wait for the map controller
+      // to be ready and then animate the camera.
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final controller = await _controllerCompleter.future;
+          if (!mounted || _userPosition == null) return;
+          controller.animateCamera(CameraUpdate.newLatLng(_userPosition!));
+        } catch (_) {}
+      });
     }
     _loadResourceIcons();
-    getLocationUpdates();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        getLocationUpdates();
+      }
+    });
   }
 
   @override
@@ -87,7 +103,11 @@ class MapPageState extends State<MapPage> {
       setState(() {
         _userPosition = widget.initialPosition;
         _locationIssue = null;
-        _hasCompletedInitialLocationCheck = true;
+      });
+      // When parent provides a fresh position (e.g. after login), center map.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _userPosition == null) return;
+        unawaited(centerMapOnMarker(_userPosition!));
       });
       if (_iconsLoaded) loadData();
     }
@@ -192,98 +212,16 @@ class MapPageState extends State<MapPage> {
     _mapController!.animateCamera(CameraUpdate.newLatLng(target));
   }
 
+  LatLng get _mapCenter =>
+      _userPosition ?? widget.initialPosition ?? _fallbackPosition;
+
   @override
   Widget build(BuildContext context) {
     final allMarkers = Set<Marker>.of(_markers);
-    if (_userPosition == null) {
-      if (!_hasCompletedInitialLocationCheck || _requestingLocation) {
-        return const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 12),
-              Text('Detecting your location...'),
-            ],
-          ),
-        );
-      }
-
-      return Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 420,
-              minHeight: MediaQuery.of(context).size.height * 0.45,
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x14000000),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.location_on,
-                      size: 34, color: Color(0xFFF48A8A)),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'We need your location to show nearby resources.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _locationIssue ??
-                        'Tap below to detect your current location and load the map.',
-                    textAlign: TextAlign.center,
-                    style:
-                        const TextStyle(fontSize: 13, color: Color(0xFF4A5568)),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _requestingLocation
-                          ? null
-                          : () =>
-                              _ensureLocationAndFetch(requestIfNeeded: true),
-                      icon: const Icon(Icons.my_location),
-                      label: Text(
-                        _requestingLocation
-                            ? 'Requesting location...'
-                            : 'Use My Location',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF48A8A),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(46),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Stack(
       children: [
         GoogleMap(
-          initialCameraPosition:
-              CameraPosition(target: _userPosition!, zoom: 14),
+          initialCameraPosition: CameraPosition(target: _mapCenter, zoom: 14),
           markers: allMarkers,
           polylines: _polylines,
           mapType: MapType.normal,
@@ -307,19 +245,71 @@ class MapPageState extends State<MapPage> {
           ]
           ''',
         ),
+        if (_userPosition == null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                color: Colors.black.withOpacity(0.05),
+                alignment: Alignment.topCenter,
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: SafeArea(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x18000000),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        LinearProgressIndicator(
+                          minHeight: 4,
+                          color: const Color(0xFFF48A8A),
+                          backgroundColor: const Color(0xFFF1D6D6),
+                          value: _requestingLocation ? null : 1,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _requestingLocation
+                              ? 'Checking your location...'
+                              : (_locationIssue ??
+                                  'Showing a fallback map while location loads.'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         Positioned(
-          bottom: 24,
+          // account for system bottom inset (navigation bar) so the FAB
+          // doesn't overflow on devices with gesture/navigation bars
+          bottom: 24 + MediaQuery.of(context).padding.bottom,
           right: 16,
-          child: FloatingActionButton(
-            heroTag: 'center_user',
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            onPressed: () {
-              if (_userPosition != null) {
-                centerMapOnMarker(_userPosition!);
-              }
-            },
-            child: const Icon(Icons.my_location),
+          child: SafeArea(
+            bottom: false,
+            child: FloatingActionButton(
+              heroTag: 'center_user',
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              onPressed: () {
+                if (_userPosition != null) {
+                  centerMapOnMarker(_userPosition!);
+                }
+              },
+              child: const Icon(Icons.my_location),
+            ),
           ),
         ),
       ],
@@ -331,15 +321,26 @@ class MapPageState extends State<MapPage> {
       if (mounted && _userPosition != widget.initialPosition) {
         setState(() => _userPosition = widget.initialPosition);
       }
+      if (mounted) {
+        setState(() {
+          _locationIssue = null;
+        });
+      }
       if (_iconsLoaded) loadData();
       _listenToLocationUpdates();
       return;
     }
 
+    if (!_autoLocationAttempted) {
+      _autoLocationAttempted = true;
+      await _ensureLocationAndFetch(requestIfNeeded: true);
+      return;
+    }
+
     if (!mounted) return;
     setState(() {
-      _hasCompletedInitialLocationCheck = true;
-      _locationIssue = 'Tap "Use My Location" to enable location access.';
+      _locationIssue =
+          'Location is not available right now. Tap "Use My Location" to try again.';
     });
   }
 
@@ -355,36 +356,13 @@ class MapPageState extends State<MapPage> {
       _locationIssue = null;
     });
     try {
-      bool enabled = await _locationController
-          .serviceEnabled()
-          .timeout(const Duration(seconds: 5));
-      if (!enabled && requestIfNeeded) {
-        enabled = await _locationController
-            .requestService()
-            .timeout(const Duration(seconds: 8));
-      }
-      if (!enabled) {
-        if (!mounted) return;
-        setState(() {
-          _hasCompletedInitialLocationCheck = true;
-          _locationIssue =
-              'Location services are off. Enable location in system settings and try again.';
-        });
-        return;
-      }
-
-      PermissionStatus perm = await _locationController
-          .hasPermission()
-          .timeout(const Duration(seconds: 5));
+      PermissionStatus perm = await _locationController.hasPermission();
       if (!_isPermissionGranted(perm) && requestIfNeeded) {
-        perm = await _locationController
-            .requestPermission()
-            .timeout(const Duration(seconds: 8));
+        perm = await _locationController.requestPermission();
       }
       if (!_isPermissionGranted(perm)) {
         if (!mounted) return;
         setState(() {
-          _hasCompletedInitialLocationCheck = true;
           _locationIssue = perm == PermissionStatus.deniedForever
               ? 'Location permission is blocked by iOS/Android settings. Enable it in system settings and try again.'
               : 'Location permission is required. Please allow access and try again.';
@@ -392,13 +370,23 @@ class MapPageState extends State<MapPage> {
         return;
       }
 
-      final loc = await _locationController.getLocation().timeout(
-            const Duration(seconds: 15),
-          );
+      bool enabled = await _locationController.serviceEnabled();
+      if (!enabled && requestIfNeeded) {
+        enabled = await _locationController.requestService();
+      }
+      if (!enabled) {
+        if (!mounted) return;
+        setState(() {
+          _locationIssue =
+              'Location services are off. Enable location in system settings and try again.';
+        });
+        return;
+      }
+
+      final loc = await _locationController.getLocation();
       if (loc.latitude == null || loc.longitude == null) {
         if (!mounted) return;
         setState(() {
-          _hasCompletedInitialLocationCheck = true;
           _locationIssue = 'Could not read your location yet. Try again.';
         });
         return;
@@ -407,24 +395,18 @@ class MapPageState extends State<MapPage> {
       if (!mounted) return;
       setState(() {
         _userPosition = LatLng(loc.latitude!, loc.longitude!);
-        _hasCompletedInitialLocationCheck = true;
         _locationIssue = null;
       });
+      // Center immediately after obtaining the first reliable location.
+      await centerMapOnMarker(_userPosition!);
+      _isFirstLocation = false;
       widget.onLocationResolved?.call(_userPosition!);
       if (_iconsLoaded) loadData();
       _listenToLocationUpdates();
-    } on TimeoutException {
-      if (!mounted) return;
-      setState(() {
-        _hasCompletedInitialLocationCheck = true;
-        _locationIssue =
-            'Location request timed out. Please try again or check emulator location settings.';
-      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _hasCompletedInitialLocationCheck = true;
-        _locationIssue = 'Unable to fetch location right now. Try again.';
+        _locationIssue = 'Unable to fetch location right now.';
       });
     } finally {
       if (mounted) setState(() => _requestingLocation = false);

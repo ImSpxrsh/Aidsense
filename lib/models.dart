@@ -86,6 +86,48 @@ class Resource {
       'website': website,
     };
   }
+
+  Resource copyWith({
+    String? id,
+    String? name,
+    String? type,
+    String? address,
+    String? openingHours,
+    bool? openNow,
+    bool? walkIn,
+    bool? appointmentRequired,
+    bool? idRequired,
+    String? cost,
+    bool? familiesWelcome,
+    bool? womenOnly,
+    bool? youthFriendly,
+    double? latitude,
+    double? longitude,
+    List<String>? tags,
+    String? phone,
+    String? website,
+  }) {
+    return Resource(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      address: address ?? this.address,
+      openingHours: openingHours ?? this.openingHours,
+      openNow: openNow ?? this.openNow,
+      walkIn: walkIn ?? this.walkIn,
+      appointmentRequired: appointmentRequired ?? this.appointmentRequired,
+      idRequired: idRequired ?? this.idRequired,
+      cost: cost ?? this.cost,
+      familiesWelcome: familiesWelcome ?? this.familiesWelcome,
+      womenOnly: womenOnly ?? this.womenOnly,
+      youthFriendly: youthFriendly ?? this.youthFriendly,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      tags: tags ?? this.tags,
+      phone: phone ?? this.phone,
+      website: website ?? this.website,
+    );
+  }
 }
 
 class UserProfile {

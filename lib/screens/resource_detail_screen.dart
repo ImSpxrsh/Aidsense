@@ -9,13 +9,82 @@ import 'polyline_service.dart';
 import 'chat_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'places_service.dart';
 
-class ResourceDetailScreen extends StatelessWidget {
+class ResourceDetailScreen extends StatefulWidget {
   const ResourceDetailScreen({super.key});
 
   @override
+  State<ResourceDetailScreen> createState() => _ResourceDetailScreenState();
+}
+
+class _ResourceDetailScreenState extends State<ResourceDetailScreen> {
+  late Resource _resource;
+  bool _detailsLoading = false;
+  bool _autoLoadedDetails = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resource = ModalRoute.of(context)!.settings.arguments as Resource;
+    if (!_autoLoadedDetails &&
+        (_resource.openingHours.isEmpty ||
+            _resource.phone.isEmpty ||
+            _resource.website.isEmpty)) {
+      _autoLoadedDetails = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadDetailsOnDemand();
+        }
+      });
+    }
+  }
+
+  Future<void> _loadDetailsOnDemand() async {
+    if (_detailsLoading) return;
+
+    // Fetch only when key contact fields are missing.
+    if (_resource.phone.isEmpty ||
+        _resource.website.isEmpty ||
+        _resource.openingHours.isEmpty) {
+      setState(() {
+        _detailsLoading = true;
+      });
+      try {
+        final placeResult = PlaceResult(
+          placeId: _resource.id,
+          name: _resource.name,
+          type: _resource.type,
+          lat: _resource.latitude,
+          lng: _resource.longitude,
+          openingHours: _resource.openingHours,
+          address: _resource.address,
+        );
+        final detailed = await PlacesService.fetchDetails(placeResult);
+        setState(() {
+          _resource = _resource.copyWith(
+            phone: detailed.phone,
+            website: detailed.website,
+            openingHours: detailed.openingHours,
+            openNow: detailed.openNow,
+            address: detailed.address,
+          );
+        });
+      } catch (e) {
+        debugPrint('Lazy load details error: $e');
+      } finally {
+        if (mounted) {
+          setState(() {
+            _detailsLoading = false;
+          });
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final Resource r = ModalRoute.of(context)!.settings.arguments as Resource;
+    final Resource r = _resource;
     const primary = Color(0xFFF48A8A);
 
     return Scaffold(
@@ -125,46 +194,85 @@ class ResourceDetailScreen extends StatelessWidget {
             spacing: 8,
             children: r.tags.map((t) => Chip(label: Text(t))).toList(),
           ),
-          if (r.openingHours.trim().isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.schedule, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Opening Hours',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule, size: 18),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Opening Hours',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Call to confirm details',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_detailsLoading)
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    r.openingHours.trim().isNotEmpty
+                        ? r.openingHours
+                        : 'Hours are loading or not available for this resource yet.',
+                    style: const TextStyle(height: 1.4),
+                  ),
+                  if (r.openNow) ...[
                     const SizedBox(height: 8),
                     Text(
-                      r.openingHours,
-                      style: const TextStyle(height: 1.4),
+                      'Open now',
+                      style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
-          ],
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final url = r.website.startsWith('http')
-                        ? r.website
-                        : 'https://${r.website}';
+                    if (r.website.trim().isEmpty) {
+                      await _loadDetailsOnDemand();
+                    }
+                    if (_resource.website.trim().isEmpty) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('Website not available for this resource'),
+                        ),
+                      );
+                      return;
+                    }
+                    final currentWebsite = _resource.website;
+                    final url = currentWebsite.startsWith('http')
+                        ? currentWebsite
+                        : 'https://$currentWebsite';
                     try {
                       await launchUrl(Uri.parse(url),
                           mode: LaunchMode.externalApplication);
@@ -190,22 +298,33 @@ class ResourceDetailScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: r.phone.trim().isEmpty
-                      ? null
-                      : () async {
-                          final ok = await _callResourcePhone(r.phone);
-                          if (!ok && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Could not open phone app'),
-                              ),
-                            );
-                          }
-                        },
+                  onPressed: () async {
+                    if (r.phone.trim().isEmpty) {
+                      await _loadDetailsOnDemand();
+                    }
+                    if (_resource.phone.trim().isEmpty) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Phone number not available for this resource'),
+                        ),
+                      );
+                      return;
+                    }
+                    final ok = await _callResourcePhone(_resource.phone);
+                    if (!ok && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not open phone app'),
+                        ),
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.phone),
-                  label: Text(
-                    r.phone.trim().isEmpty ? 'No Phone' : 'Call',
-                    style: const TextStyle(
+                  label: const Text(
+                    'Call',
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFFF48A8A),

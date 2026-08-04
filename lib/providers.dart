@@ -18,14 +18,22 @@ final currentSessionProvider = Provider<Session?>((ref) {
 });
 
 final onboardingCompleteProvider = FutureProvider<bool>((ref) async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool('onboarding_complete') ?? false;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('onboarding_complete') ?? false;
+  } catch (_) {
+    return false;
+  }
 });
 
 class OnboardingController {
   Future<void> markComplete() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_complete', true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_complete', true);
+    } catch (_) {
+      // Non-critical persistence failure; user can continue.
+    }
   }
 }
 

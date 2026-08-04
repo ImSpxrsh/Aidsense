@@ -54,7 +54,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSection(
               '1. INFORMATION WE COLLECT',
-              'We collect information you provide directly to us:\n\n• Account Information: Name, email address, password\n• Profile Data: Zip code, phone number, profile photo\n• Usage Data: Resources viewed, searches performed, chat interactions\n• Device Information: Device type, operating system, app version\n• Location Data: Approximate location (with your permission) to show nearby resources\n\nWe do NOT collect:\n• Social security numbers or government IDs\n• Financial information or payment details\n• Sensitive health information\n• Information about your use of specific social services',
+              'We collect information you provide directly to us:\n\n• Account Information: Name, email address, password\n• Profile Data: Zip code, optional phone number, profile photo\n• Usage Data: Resources viewed, searches performed, chat interactions\n• Device Information: Device type, operating system, app version\n• Location Data: Approximate location (with your permission) to show nearby resources\n\nWe do NOT collect:\n• Social security numbers or government IDs\n• Financial information or payment details\n• Sensitive health information\n• Information about your use of specific social services',
             ),
             _buildSection(
               '2. HOW WE USE YOUR INFORMATION',

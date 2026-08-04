@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,8 +17,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _email = TextEditingController();
   final _pass = TextEditingController();
   final _fullName = TextEditingController();
-  final _mobileNumber = TextEditingController();
-  final _dateOfBirth = TextEditingController();
   bool _loading = false;
   bool _obscurePassword = true;
   StreamSubscription<AuthState>? _authSub;
@@ -43,14 +42,55 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
+  Future<bool> _waitForSession() async {
+    const attempts = 10;
+    const delay = Duration(milliseconds: 200);
+    for (var i = 0; i < attempts; i++) {
+      if (Supabase.instance.client.auth.currentSession != null) return true;
+      await Future.delayed(delay);
+    }
+    return Supabase.instance.client.auth.currentSession != null;
+  }
+
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
       await signInWithGoogleForSupabase();
+      if (!mounted) return;
+      if (await _waitForSession()) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Google sign-in: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    setState(() => _loading = true);
+    try {
+      await signInWithAppleForSupabase();
+      await UserData.ensureProfileRow();
+      if (!mounted) return;
+      if (await _waitForSession()) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else if (kDebugMode) {
+        debugPrint('Apple sign-in: awaiting callback/session establishment...');
+      }
+    } on SocialSignInCancelledException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Apple sign-in cancelled.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Apple sign-in: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -70,24 +110,23 @@ class _SignupScreenState extends State<SignupScreen> {
 
     setState(() => _loading = true);
     try {
+      final fullName = _fullName.text.trim();
+
+      final metadata = <String, dynamic>{
+        if (fullName.isNotEmpty) 'full_name': fullName,
+      };
+
       // Sign up with Supabase (metadata is available to triggers / load fallbacks)
       final response = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name': _fullName.text.trim(),
-          'phone': _mobileNumber.text.trim(),
-          'date_of_birth': _dateOfBirth.text.trim(),
-        },
+        data: metadata.isEmpty ? null : metadata,
       );
 
       if (response.user != null) {
-        final dob = _dateOfBirth.text.trim();
         UserData.saveUser(
-          fullName: _fullName.text.trim(),
+          fullName: fullName,
           email: email,
-          mobile: _mobileNumber.text.trim(),
-          dateOfBirth: dob,
         );
 
         // Without a session (e.g. "confirm email" enabled), RLS usually blocks writes — keep local data above.
@@ -95,9 +134,8 @@ class _SignupScreenState extends State<SignupScreen> {
           try {
             await Supabase.instance.client.from('profiles').upsert({
               'uid': response.user!.id,
-              'fullName': _fullName.text.trim(),
+              if (fullName.isNotEmpty) 'fullName': fullName,
               'email': email,
-              'phone': _mobileNumber.text.trim(),
               'favorites': [],
             });
           } catch (e) {
@@ -134,86 +172,23 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  void _showTermsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Terms of Use'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'Welcome to AidSense!\n\n'
-            '1. ACCEPTANCE OF TERMS\n'
-            'By using AidSense, you agree to these terms.\n\n'
-            '2. USE OF SERVICE\n'
-            'AidSense connects users with community resources. Use responsibly.\n\n'
-            '3. USER CONDUCT\n'
-            'Be respectful and honest when using our platform.\n\n'
-            '4. PRIVACY\n'
-            'We protect your personal information as outlined in our Privacy Policy.\n\n'
-            '5. DISCLAIMER\n'
-            'Resource information is provided as-is. Always verify details directly.\n\n'
-            'For questions, contact support@aidsense.app',
-            style: TextStyle(fontSize: 14),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrivacyDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Privacy Policy'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'AidSense Privacy Policy\n\n'
-            '1. INFORMATION WE COLLECT\n'
-            '• Account information (name, email, zip code)\n'
-            '• Usage data and preferences\n'
-            '• Location data (with permission)\n\n'
-            '2. HOW WE USE INFORMATION\n'
-            '• Provide personalized resource recommendations\n'
-            '• Improve our services\n'
-            '• Send important notifications\n\n'
-            '3. INFORMATION SHARING\n'
-            'We do not sell personal information. We may share data with:\n'
-            '• Service providers (with proper safeguards)\n'
-            '• Legal authorities (when required)\n\n'
-            '4. DATA SECURITY\n'
-            'We use industry-standard security measures.\n\n'
-            '5. YOUR RIGHTS\n'
-            'You can access, update, or delete your data anytime.\n\n'
-            'Contact: support@aidsense.app\n'
-            'Last updated: September 2025',
-            style: TextStyle(fontSize: 14),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF56565);
+    final showAppleSignIn =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+            }
+          },
         ),
         title: const Text(
           'New Account',
@@ -245,69 +220,14 @@ class _SignupScreenState extends State<SignupScreen> {
               placeholder: 'support@aidsense.app',
             ),
             const SizedBox(height: 20),
-
-            // Mobile Number Field (auto-format)
-            _buildInputField(
-              label: 'Mobile Number',
-              controller: _mobileNumber,
-              placeholder: 'XXX-XXX-XXXX',
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                _PhoneNumberFormatter(),
-              ],
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                'We only ask for the details needed to create and sign in to your account.',
+                style: TextStyle(color: Color(0xFF718096), fontSize: 13),
+              ),
             ),
-            const SizedBox(height: 20),
-
-            // Date of Birth Field (auto-format)
-            _buildInputField(
-              label: 'Date Of Birth',
-              controller: _dateOfBirth,
-              placeholder: 'DD / MM / YYYY',
-              keyboardType: TextInputType.datetime,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                _DateOfBirthFormatter(),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Legal Text
-            Wrap(
-              children: [
-                const Text(
-                  'By continuing, you agree to ',
-                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
-                ),
-                GestureDetector(
-                  onTap: () => _showTermsDialog(context),
-                  child: const Text(
-                    'Terms of Use',
-                    style: TextStyle(
-                      color: primary,
-                      decoration: TextDecoration.underline,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const Text(
-                  ' and ',
-                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
-                ),
-                GestureDetector(
-                  onTap: () => _showPrivacyDialog(context),
-                  child: const Text(
-                    'Privacy Policy.',
-                    style: TextStyle(
-                      color: primary,
-                      decoration: TextDecoration.underline,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
 
             // Sign Up Button
             Container(
@@ -384,6 +304,29 @@ class _SignupScreenState extends State<SignupScreen> {
                 ],
               ),
             ),
+            if (showAppleSignIn) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _loading ? null : _signInWithApple,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 52),
+                  foregroundColor: const Color(0xFF2D3748),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.apple, size: 22),
+                    SizedBox(width: 12),
+                    Text('Continue with Apple'),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // Login Link
@@ -491,62 +434,6 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-
-// Phone number formatter
-class _PhoneNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    String formatted = '';
-    if (digits.length >= 3) {
-      formatted += digits.substring(0, 3);
-      if (digits.length >= 6) {
-        formatted += '-' + digits.substring(3, 6);
-        if (digits.length > 6) {
-          formatted += '-' +
-              digits.substring(6, digits.length > 10 ? 10 : digits.length);
-        }
-      } else {
-        formatted += '-' + digits.substring(3);
-      }
-    } else {
-      formatted = digits;
-    }
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
-
-// Date of birth formatter
-class _DateOfBirthFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    String formatted = '';
-    if (digits.length >= 2) {
-      formatted += digits.substring(0, 2);
-      if (digits.length >= 4) {
-        formatted += ' / ' + digits.substring(2, 4);
-        if (digits.length > 4) {
-          formatted += ' / ' +
-              digits.substring(4, digits.length > 8 ? 8 : digits.length);
-        }
-      } else {
-        formatted += ' / ' + digits.substring(2);
-      }
-    } else {
-      formatted = digits;
-    }
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

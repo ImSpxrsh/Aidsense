@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'user_data.dart';
+import 'app_events.dart';
 import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/login_callback_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/home_screen.dart';
@@ -15,47 +19,126 @@ import 'screens/privacy_policy_screen.dart';
 import 'screens/about_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Always load .env before anything else
+String? _safeDotenvValue(String key) {
   try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    debugPrint('Error loading .env: $e');
+    return dotenv.env[key];
+  } catch (_) {
+    return null;
   }
+}
 
-  // Always initialize Supabase before runApp
-  final supabaseUrl = dotenv.env['SUPABASE_URL'];
-  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
-  if (supabaseUrl == null || supabaseAnonKey == null) {
-    throw Exception('SUPABASE_URL or SUPABASE_ANON_KEY is not set in .env');
-  }
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
-  debugPrint('Supabase initialized successfully');
+Future<void> main() async {
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
-    if (data.event == AuthChangeEvent.signedIn && data.session != null) {
-      try {
-        await UserData.ensureProfileRow();
-        await UserData.loadFromSupabase();
-      } catch (e) {
-        debugPrint('Auth signedIn profile sync: $e');
+    const supabaseUrlFromDefine = String.fromEnvironment('SUPABASE_URL');
+    const supabaseAnonKeyFromDefine =
+        String.fromEnvironment('SUPABASE_ANON_KEY');
+    var dotenvLoaded = false;
+
+    // Load .env when available (optional in release where secrets come from dart-define).
+    try {
+      await dotenv.load(fileName: ".env");
+      dotenvLoaded = true;
+    } catch (e) {
+      final message = e.toString();
+      final missingFile = message.contains('FileNotFoundError') ||
+          message.contains('file not found') ||
+          message.contains('Unable to load asset');
+      if (!missingFile) {
+        debugPrint('Optional .env load failed: $e');
       }
     }
-    if (data.event == AuthChangeEvent.signedOut) {
-      UserData.clearUser();
-    }
-  });
 
-  runApp(const ProviderScope(child: AidSenseApp()));
+    // Keep startup resilient on iOS: don't block launch indefinitely.
+    var supabaseInitialized = false;
+
+    // Always initialize Supabase before runApp when config is available.
+    final supabaseUrl = supabaseUrlFromDefine.isNotEmpty
+        ? supabaseUrlFromDefine
+        : (dotenvLoaded ? _safeDotenvValue('SUPABASE_URL') : null);
+    final supabaseAnonKey = supabaseAnonKeyFromDefine.isNotEmpty
+        ? supabaseAnonKeyFromDefine
+        : (dotenvLoaded ? _safeDotenvValue('SUPABASE_ANON_KEY') : null);
+    if (supabaseUrl == null || supabaseAnonKey == null) {
+      debugPrint('SUPABASE_URL or SUPABASE_ANON_KEY is not set in .env');
+    } else {
+      try {
+        await Supabase.initialize(
+          url: supabaseUrl,
+          anonKey: supabaseAnonKey,
+        ).timeout(const Duration(seconds: 10));
+        supabaseInitialized = true;
+        debugPrint('Supabase initialized successfully');
+      } catch (e) {
+        debugPrint('Supabase initialize failed or timed out: $e');
+      }
+    }
+
+    if (supabaseInitialized) {
+      Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+        if (data.event == AuthChangeEvent.signedIn && data.session != null) {
+          try {
+            final client = Supabase.instance.client;
+            final uid = client.auth.currentUser?.id;
+
+            if (uid != null && uid.isNotEmpty) {
+              try {
+                await UserData.ensureProfileRow();
+              } catch (e) {
+                debugPrint('Profile ensure failed: $e');
+              }
+            }
+
+            await UserData.loadFromSupabase();
+            // Signal app to refresh resources/location now that a user signed in.
+            try {
+              AppEvents.refreshResources();
+            } catch (_) {}
+          } catch (e) {
+            debugPrint('Auth signedIn profile sync: $e');
+          }
+        }
+        if (data.event == AuthChangeEvent.signedOut) {
+          UserData.clearUser();
+        }
+      });
+    }
+
+    FlutterError.onError = (details) {
+      final err = details.exception;
+      final msg = err.toString();
+      if (msg.contains('Code verifier could not be found')) {
+        // Ignore duplicate PKCE/deeplink race errors triggered by rapid or
+        // fallback OAuth flows (first attempt may leave no verifier).
+        if (kDebugMode) debugPrint('Ignored PKCE race error: $msg');
+        return;
+      }
+      FlutterError.dumpErrorToConsole(details);
+    };
+
+    runApp(const ProviderScope(child: AidSenseApp()));
+  }, (error, stack) {
+    final msg = error.toString();
+    if (msg.contains('Code verifier could not be found')) {
+      if (kDebugMode) debugPrint('Ignored PKCE race error (zone): $msg');
+      return;
+    }
+    FlutterError.reportError(
+        FlutterErrorDetails(exception: error, stack: stack));
+  });
+}
+
+bool _isLoginCallbackUri(Uri uri) {
+  return uri.host == 'login-callback' ||
+      uri.path.contains('login-callback') ||
+      uri.toString().startsWith('com.aidsense.app://login-callback');
 }
 
 class AidSenseApp extends StatelessWidget {
   const AidSenseApp({super.key});
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +162,42 @@ class AidSenseApp extends StatelessWidget {
         ),
       ),
       initialRoute: '/splash',
+      navigatorKey: navigatorKey,
+      onGenerateRoute: (settings) {
+        final name = settings.name ?? '';
+        if (kDebugMode) debugPrint('onGenerateRoute: $name');
+        try {
+          final uri = Uri.parse(name);
+          final hasCode = uri.queryParameters.containsKey('code');
+          final hasError = uri.queryParameters.containsKey('error');
+          if (hasCode || hasError || _isLoginCallbackUri(uri)) {
+            return MaterialPageRoute(
+              builder: (_) => const LoginCallbackScreen(),
+              settings: settings,
+            );
+          }
+        } catch (_) {}
+        return null; // fall back to routes map
+      },
+      onUnknownRoute: (settings) {
+        final name = settings.name ?? '';
+        if (kDebugMode) debugPrint('onUnknownRoute: $name');
+        try {
+          final uri = Uri.parse(name);
+          final hasCode = uri.queryParameters.containsKey('code');
+          final hasError = uri.queryParameters.containsKey('error');
+          if (hasCode || hasError || _isLoginCallbackUri(uri)) {
+            return MaterialPageRoute(
+              builder: (_) => const LoginCallbackScreen(),
+              settings: settings,
+            );
+          }
+        } catch (_) {}
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
+      },
       routes: {
+        '/login-callback': (_) => const LoginCallbackScreen(),
+        '/login-callback/': (_) => const LoginCallbackScreen(),
         '/splash': (_) => const SplashScreen(),
         '/': (_) => const WelcomeScreen(),
         '/onboarding': (_) => const OnboardingScreen(),

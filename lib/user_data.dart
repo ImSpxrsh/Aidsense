@@ -12,7 +12,7 @@ class UserData {
 
   // Getters
   static String get fullName => _fullName ?? 'User';
-  static String get email => _email ?? 'support@aidsense.app';
+  static String get email => _email ?? '';
   static String get mobile => _mobile ?? '';
   static String get dateOfBirth => _dateOfBirth ?? '';
   static bool get isLoggedIn => _isLoggedIn;
@@ -53,8 +53,8 @@ class UserData {
   static void saveUser({
     required String fullName,
     required String email,
-    required String mobile,
-    required String dateOfBirth,
+    String mobile = '',
+    String dateOfBirth = '',
   }) {
     _fullName = fullName;
     _email = email;
@@ -112,19 +112,31 @@ class UserData {
 
   // SharedPreferences helpers
   static Future<void> _saveToPrefs(String key, String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(key, value);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+    } catch (_) {
+      // Keep app responsive even if native prefs channel is temporarily unavailable.
+    }
   }
 
   static Future<void> loadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    _fullName = prefs.getString('fullName') ?? 'User';
-    _email = prefs.getString('email') ?? 'support@aidsense.app';
-    _mobile = prefs.getString('mobile') ?? '';
-    _dateOfBirth = prefs.getString('dateOfBirth') ?? '';
-    _isLoggedIn = prefs.getString('isLoggedIn') == 'true';
-    final favs = prefs.getString('favorites') ?? '';
-    _favorites = favs.isNotEmpty ? favs.split(',') : [];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _fullName = prefs.getString('fullName') ?? 'User';
+      _email = prefs.getString('email') ?? '';
+      _mobile = prefs.getString('mobile') ?? '';
+      _dateOfBirth = prefs.getString('dateOfBirth') ?? '';
+      _isLoggedIn = prefs.getString('isLoggedIn') == 'true';
+      final favs = prefs.getString('favorites') ?? '';
+      _favorites = favs.isNotEmpty ? favs.split(',') : [];
+    } catch (_) {
+      _fullName = _fullName ?? 'User';
+      _email = _email ?? '';
+      _mobile = _mobile ?? '';
+      _dateOfBirth = _dateOfBirth ?? '';
+      _favorites = _favorites;
+    }
   }
 
   static String? _firstNonEmptyString(
@@ -232,9 +244,7 @@ class UserData {
           (user.email != null && user.email!.isNotEmpty
               ? user.email!.split('@').first
               : 'User');
-      _email = _firstNonEmptyString(response, ['email']) ??
-          user.email ??
-          'support@aidsense.app';
+      _email = _firstNonEmptyString(response, ['email']) ?? user.email ?? '';
       _mobile = _firstNonEmptyString(response, ['phone', 'phone_number']) ??
           _firstNonEmptyString(meta, ['phone']) ??
           '';
@@ -251,7 +261,7 @@ class UserData {
               (user.email != null && user.email!.isNotEmpty
                   ? user.email!.split('@').first
                   : 'User');
-      _email = user.email ?? 'support@aidsense.app';
+      _email = user.email ?? '';
       _mobile = _firstNonEmptyString(meta, ['phone']) ?? '';
       _dateOfBirth =
           _firstNonEmptyString(meta, ['date_of_birth', 'dateOfBirth']) ?? '';

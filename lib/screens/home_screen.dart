@@ -4,18 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:location/location.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../user_data.dart';
 import '../models.dart';
-import '../mock_resources.dart';
 import '../providers.dart';
+import '../google_auth.dart';
 import 'chat_screen.dart';
 import 'resource_detail_screen.dart';
 import '../google_maps.dart';
 import '../screens/places_service.dart';
+import '../app_events.dart';
+import '../nearby_refresh_logic.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -26,18 +27,16 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
-  static const String _resourceCacheKey = 'nearby_resources_cache_v1';
+  static const String _resourceCacheKey = 'nearby_resources_cache_v2';
   static const String _lastKnownPositionCacheKey =
       'last_known_user_position_v1';
-  static const LatLng _defaultFallbackPosition =
-      LatLng(40.7128, -74.0060); // NYC fallback for emulator timeouts
   static const Duration _resumeRefreshMinGap = Duration(minutes: 2);
   static const Duration _backgroundRefreshThreshold = Duration(seconds: 25);
 
   int _tab = 0;
 
   String userName = 'User';
-  String userEmail = 'support@aidsense.app';
+  String userEmail = '';
 
   final GlobalKey<_ProfileTabState> _profileKey = GlobalKey<_ProfileTabState>();
 
@@ -49,16 +48,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _refreshingOnResume = false;
   DateTime? _lastResumeRefreshAt;
   DateTime? _lastBackgroundAt;
-
-  bool _isPermissionGranted(PermissionStatus perm) {
-    return perm == PermissionStatus.granted ||
-        perm.toString().contains('grantedLimited');
-  }
+  bool _loadingNearby = false;
+  String? _lastNearbyFetchSignature;
+  StreamSubscription<void>? _appEventsSub;
 
   @override
   void initState() {
     super.initState();
-    ref.read(requireFreshLocationOnLaunchProvider.notifier).state = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(requireFreshLocationOnLaunchProvider.notifier).state = true;
+    });
+    // Listen for global refresh signals (e.g. after auth sign-in)
+    _appEventsSub = AppEvents.onRefreshResources.listen((_) async {
+      if (!mounted) return;
+      // Force a fresh location and resource load
+      ref.read(requireFreshLocationOnLaunchProvider.notifier).state = true;
+      await _loadNearbyPlaces();
+    });
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _bootstrapResources();
@@ -67,6 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void dispose() {
+    _appEventsSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -102,23 +110,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _refreshingOnResume = true;
     _lastResumeRefreshAt = now;
     try {
-      await _loadNearbyPlaces();
+      await _loadNearbyPlaces(forcedPosition: _userPosition);
     } finally {
       _refreshingOnResume = false;
     }
   }
 
   Future<void> _bootstrapResources() async {
-    final mustCheckFresh = ref.read(requireFreshLocationOnLaunchProvider);
-    if (!mustCheckFresh) {
-      await _loadCachedResources();
-    } else if (mounted) {
-      setState(() {
-        _resources = [];
-        _userPosition = null;
-      });
-    }
-    await _loadNearbyPlaces();
+    await _loadCachedResources();
+
+    unawaited(_loadNearbyPlaces());
   }
 
   Future<void> _refreshProfileFromSupabase() async {
@@ -209,8 +210,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _loadNearbyPlaces({LatLng? forcedPosition}) async {
+    if (_loadingNearby) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingStageLabel = null;
+        });
+      }
+      return;
+    }
     final mustCheckFresh = ref.read(requireFreshLocationOnLaunchProvider) &&
         forcedPosition == null;
+
+    final effectivePosition = forcedPosition ?? _userPosition;
+    final fetchSignature = effectivePosition == null
+        ? null
+        : '${effectivePosition.latitude.toStringAsFixed(4)},${effectivePosition.longitude.toStringAsFixed(4)}';
+
+    final shouldRefresh = NearbyRefreshLogic.shouldFetch(
+      hasExistingResources: _resources.isNotEmpty,
+      forceRefresh: forcedPosition != null || mustCheckFresh,
+      requireFreshLocation: mustCheckFresh,
+      currentSignature: fetchSignature,
+      lastSignature: _lastNearbyFetchSignature,
+    );
+
+    if (!shouldRefresh) {
+      return;
+    }
+
+    _loadingNearby = true;
+    _lastNearbyFetchSignature = fetchSignature;
 
     if (mounted) {
       setState(() {
@@ -221,90 +251,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       });
     }
     try {
-      final location = Location();
-      LatLng? freshPosition = forcedPosition;
-
-      if (freshPosition == null) {
-        try {
-          bool enabled = await location
-              .serviceEnabled()
-              .timeout(const Duration(seconds: 5));
-          if (!enabled) {
-            enabled = await location
-                .requestService()
-                .timeout(const Duration(seconds: 8));
-            if (!enabled) {
-              debugPrint(
-                  'Location service unavailable, using fallback position.');
-            }
-          }
-
-          PermissionStatus perm = await location
-              .hasPermission()
-              .timeout(const Duration(seconds: 5));
-          if (perm == PermissionStatus.denied) {
-            perm = await location
-                .requestPermission()
-                .timeout(const Duration(seconds: 8));
-          }
-
-          if (_isPermissionGranted(perm) && enabled) {
-            final loc = await location.getLocation().timeout(
-                  const Duration(seconds: 20),
-                );
-            if (loc.latitude != null && loc.longitude != null) {
-              freshPosition = LatLng(loc.latitude!, loc.longitude!);
-            }
-          }
-        } on TimeoutException {
-          debugPrint(
-            'Location timed out, continuing with cached/default position.',
-          );
-        } catch (e) {
-          debugPrint('Location fetch failed, continuing with fallback: $e');
-        }
-      }
-
-      if (mustCheckFresh && freshPosition == null) {
-        if (mounted) {
-          setState(() {
-            _userPosition = null;
-            _resources = [];
-            _loading = false;
-            _loadingStageLabel = null;
-          });
-        }
+      final queryPosition = forcedPosition ?? _userPosition;
+      if (queryPosition == null) {
+        // Wait for a real location instead of querying a fixed fallback city.
         return;
       }
 
       final List<Resource> all = [];
-      final queryPosition =
-          freshPosition ?? _userPosition ?? _defaultFallbackPosition;
-      const categories = ['shelter', 'food', 'clinic', 'Mental Health'];
-      final keywordMap = {
-        'food': 'food bank soup kitchen',
-        'shelter': 'homeless shelter',
-        'clinic': 'free clinic community health',
-        'Mental Health': 'mental health counseling therapy',
-      };
+      const broadQueries = [
+        'homeless shelter food bank soup kitchen',
+        'free clinic community health',
+      ];
 
-      for (final c in categories) {
-        if (mounted && _loading) {
-          setState(() => _loadingStageLabel = _loadingLabelForCategory(c));
-        }
-        try {
-          final places = await PlacesService.fetchNearby(
-            lat: queryPosition.latitude,
-            lng: queryPosition.longitude,
-            keyword: keywordMap[c]!,
-          );
-          final detailedPlaces = await Future.wait(
-            places.take(10).map((p) => PlacesService.fetchDetails(p)),
-          );
-          all.addAll(
-            detailedPlaces.map((p) {
+      final fetched = await Future.wait(
+        broadQueries.map((query) async {
+          if (mounted && _loading) {
+            setState(() => _loadingStageLabel = 'Searching for resources...');
+          }
+          try {
+            final places = await PlacesService.fetchNearby(
+              lat: queryPosition.latitude,
+              lng: queryPosition.longitude,
+              keyword: query,
+            ).timeout(const Duration(seconds: 20));
+            return places.map((p) {
+              final category = _deriveResourceCategory(
+                place: p,
+                sourceQuery: query,
+              );
               List<String> tags;
-              switch (c) {
+              switch (category) {
                 case 'shelter':
                   tags = ['Housing', 'Assistance'];
                   break;
@@ -314,16 +290,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 case 'clinic':
                   tags = ['Medical', 'Care'];
                   break;
-                case 'Mental Health':
-                  tags = ['Counseling', 'Therapy', 'Support'];
-                  break;
                 default:
-                  tags = [c];
+                  tags = ['Resource'];
               }
+
               return Resource(
                 id: p.placeId,
                 name: p.name,
-                type: c,
+                type: category,
                 address: p.address,
                 openingHours: p.openingHours,
                 openNow: p.openNow,
@@ -336,46 +310,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 youthFriendly: p.youthFriendly,
                 latitude: p.lat,
                 longitude: p.lng,
+                tags: tags,
                 phone: p.phone,
                 website: p.website,
-                tags: tags,
               );
-            }),
-          );
-        } catch (e) {
-          debugPrint('Category load failed ($c): $e');
+            }).toList();
+          } catch (e) {
+            debugPrint('Nearby query load failed ($query): $e');
+            return <Resource>[];
+          }
+        }),
+      );
+
+      for (final resources in fetched) {
+        all.addAll(resources);
+      }
+
+      // Deduplicate by place id, then keep strongest per category.
+      final byId = <String, Resource>{};
+      for (final resource in all) {
+        final existing = byId[resource.id];
+        if (existing == null) {
+          byId[resource.id] = resource;
+          continue;
+        }
+
+        // Prefer meaningful aid categories over generic/other on duplicate ids.
+        final existingScore = _categoryPriority(existing.type);
+        final incomingScore = _categoryPriority(resource.type);
+        if (incomingScore > existingScore) {
+          byId[resource.id] = resource;
         }
       }
 
+      final shelters = byId.values.where((r) => r.type == 'shelter').take(3);
+      final food = byId.values.where((r) => r.type == 'food').take(3);
+      final clinics = byId.values.where((r) => r.type == 'clinic').take(3);
+      final finalResources = [
+        ...shelters,
+        ...food,
+        ...clinics,
+      ];
+
       // Keep favorites displayable across app restarts once resources are known.
-      FavoritesService().registerResources(all);
+      FavoritesService().registerResources(finalResources);
 
       if (mounted) {
         setState(() {
-          if (freshPosition != null) {
-            _userPosition = freshPosition;
-          }
-          _resources = all;
+          _userPosition = queryPosition;
+          _resources = finalResources;
           _loading = false;
         });
       }
-      if (freshPosition != null) {
+      if (forcedPosition != null) {
         ref.read(requireFreshLocationOnLaunchProvider.notifier).state = false;
-        await _persistLastKnownPosition(freshPosition);
+        await _persistLastKnownPosition(forcedPosition);
+      } else if (_userPosition != null) {
+        ref.read(requireFreshLocationOnLaunchProvider.notifier).state = false;
+        await _persistLastKnownPosition(_userPosition!);
       }
-      await _persistResourceCache(all);
+      await _persistResourceCache(finalResources);
 
-      if (all.isEmpty && mounted && _resources.isEmpty) {
+      if (finalResources.isEmpty && mounted && _resources.isEmpty) {
         setState(() {
-          _resources = mockResources;
           _loadingStageLabel = null;
         });
       }
     } catch (e) {
       debugPrint('Nearby load failed: $e');
-      if (mounted && _resources.isEmpty) {
+      if (mounted) {
         setState(() {
-          _resources = mockResources;
           _loadingStageLabel = null;
         });
       }
@@ -386,7 +390,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           _loadingStageLabel = null;
         });
       }
+      _loadingNearby = false;
     }
+  }
+
+  int _categoryPriority(String type) {
+    switch (type.toLowerCase()) {
+      case 'shelter':
+        return 4;
+      case 'clinic':
+        return 3;
+      case 'food':
+        return 2;
+      case 'other':
+      default:
+        return 1;
+    }
+  }
+
+  String _displayTypeFromCategory(String rawType) {
+    final t = rawType.toLowerCase();
+    if (t.contains('shelter')) return 'shelter';
+    if (t.contains('food')) return 'food';
+    if (t.contains('clinic') || t.contains('health') || t.contains('doctor')) {
+      return 'clinic';
+    }
+    return 'other';
+  }
+
+  String _deriveResourceCategory({
+    required PlaceResult place,
+    required String sourceQuery,
+  }) {
+    final fromType = _displayTypeFromCategory(place.type);
+    if (fromType != 'other') return fromType;
+
+    final q = sourceQuery.toLowerCase();
+    final name = place.name.toLowerCase();
+
+    if (q.contains('homeless shelter')) {
+      // The shelter query intentionally mixes shelter + food terms.
+      // Default to shelter unless the place name clearly indicates food-only service.
+      final looksFoodOnly = name.contains('food bank') ||
+          name.contains('soup kitchen') ||
+          name.contains('pantry') ||
+          name.contains('meal');
+      return looksFoodOnly ? 'food' : 'shelter';
+    }
+
+    if (q.contains('free clinic') || q.contains('community health')) {
+      return 'clinic';
+    }
+
+    return 'other';
   }
 
   Future<void> _onMapLocationResolved(LatLng position) async {
@@ -440,8 +496,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               );
 
               if (shouldLogout == true && mounted) {
-                await Supabase.instance.client.auth.signOut();
-                UserData.clearUser();
+                // Use centralized sign-out to clear native SDK sessions
+                // and cached app state that can cause stale account behavior.
+                await signOutAll();
                 if (context.mounted) {
                   Navigator.pushReplacementNamed(context, '/');
                 }
@@ -488,21 +545,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
-
-  String _loadingLabelForCategory(String category) {
-    switch (category) {
-      case 'shelter':
-        return 'Searching for shelters...';
-      case 'food':
-        return 'Searching for food banks and meals...';
-      case 'clinic':
-        return 'Searching for free clinics...';
-      case 'Mental Health':
-        return 'Searching for mental health support...';
-      default:
-        return 'Searching for resources...';
-    }
-  }
 }
 
 /* ---------------- MAP + LIST TAB ---------------- */
@@ -548,7 +590,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF48A8A);
-    final filters = ['All', 'Shelter', 'Food', 'Clinic', 'Mental Health'];
+    final filters = ['All', 'Shelter', 'Food', 'Clinic'];
     return Column(
       children: [
         Padding(
@@ -577,22 +619,29 @@ class _MapAndListTabState extends State<_MapAndListTab> {
             onChanged: (value) => setState(() => _searchQuery = value),
           ),
         ),
-        SizedBox(
-          height: 46,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            scrollDirection: Axis.horizontal,
-            itemBuilder: (c, i) {
-              final f = filters[i];
-              return FilterChip(
-                selected: _selectedFilter == f,
-                showCheckmark: false,
-                label: Text(f),
-                onSelected: (_) => setState(() => _selectedFilter = f),
-              );
-            },
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemCount: filters.length,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              for (var i = 0; i < filters.length; i++) ...[
+                Expanded(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilterChip(
+                      selected: _selectedFilter == filters[i],
+                      showCheckmark: false,
+                      label: Text(
+                        filters[i],
+                        textAlign: TextAlign.center,
+                      ),
+                      onSelected: (_) =>
+                          setState(() => _selectedFilter = filters[i]),
+                    ),
+                  ),
+                ),
+                if (i != filters.length - 1) const SizedBox(width: 8),
+              ],
+            ],
           ),
         ),
         Expanded(
@@ -647,6 +696,7 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, i) {
                         final r = _filteredPlaces[i];
+                        final isOpenNow = _isOpenNow(r);
                         return Card(
                           margin: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),
@@ -678,17 +728,17 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: r.openNow
+                                    color: isOpenNow
                                         ? Colors.green.withOpacity(0.12)
                                         : Colors.red.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
-                                    r.openNow ? 'Open now' : 'Closed now',
+                                    isOpenNow ? 'Open now' : 'Closed now',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color: r.openNow
+                                      color: isOpenNow
                                           ? Colors.green.shade800
                                           : Colors.red.shade800,
                                     ),
@@ -698,9 +748,15 @@ class _MapAndListTabState extends State<_MapAndListTab> {
                             ),
                             trailing:
                                 const Icon(Icons.arrow_forward_ios, size: 16),
-                            onTap: () => Navigator.pushNamed(
-                                context, '/resource',
-                                arguments: r),
+                            onTap: () {
+                              // Schedule navigation after frame to avoid
+                              // Navigator being locked during list builds/transitions.
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!mounted) return;
+                                Navigator.pushNamed(context, '/resource',
+                                    arguments: r);
+                              });
+                            },
                           ),
                         );
                       },
@@ -718,8 +774,6 @@ class _MapAndListTabState extends State<_MapAndListTab> {
         return Icons.restaurant;
       case 'clinic':
         return Icons.local_hospital;
-      case 'Mental Health':
-        return Icons.psychology;
       default:
         return Icons.location_on;
     }
@@ -736,12 +790,19 @@ class _MapAndListTabState extends State<_MapAndListTab> {
         return 'Searching for food...';
       case 'Clinic':
         return 'Searching for clinics...';
-      case 'Mental Health':
-        return 'Searching for mental health services...';
       case 'All':
       default:
         return 'Searching for resources...';
     }
+  }
+
+  bool _isOpenNow(Resource resource) {
+    if (resource.openNow) return true;
+    final hours = resource.openingHours.toLowerCase();
+    return hours.contains('open 24 hours') ||
+        hours.contains('24 hours open') ||
+        hours.contains('open 24/7') ||
+        hours.contains('24/7');
   }
 }
 
